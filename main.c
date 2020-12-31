@@ -302,7 +302,7 @@ gboolean on_draw_event(GtkWidget *widget, cairo_t *cr)
     darea_height = gtk_widget_get_allocated_height(darea);
     darea_width = gtk_widget_get_allocated_width(darea);
 
-    printf("%d %d\n", darea_width, darea_height);
+
     static gdouble posx = 800/2;
     static gdouble posy = 800/2;
 
