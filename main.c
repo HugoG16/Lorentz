@@ -3,9 +3,16 @@ QUESTOES PARA O PROF
     O QUE DEVEMOS FAZER QUANDO O DENOMINADOR É ZERO?
         o que estamos a fazer de momento é dizer que 1/0 = DBL_MAX ou INF
     
-    A SIMULAÇÃO PARECE QUE ACONTECE "DISCRETAMENTE", AO EM VEZ DE SER CONTINUO E 'SUAVE', O QUE PUDEMOS FAZER PARA CORRIGIR ISSO?
+    talvez esteja resolvido - A SIMULAÇÃO PARECE QUE ACONTECE "DISCRETAMENTE", AO EM VEZ DE SER CONTINUO E 'SUAVE', O QUE PUDEMOS FAZER PARA CORRIGIR ISSO?
         diminuir o tempo do timeout? diminuir o dt? aumentar?
         será algum problema de otimizaçao?
+    
+    nos spin buttons o valor so é atualizado quando clicamos nos butoes de lado, dar enter nao funciona por exemplo
+        QUAL SERA O EVENT?
+    
+    a particula as vezes consegue fugir da darea - O QUE PODEMOS FAZER?
+        tentei limitar a velocidade mas nao parece resultar
+            devemos fazer isso?
 *****************************************************************************************************************************************************/
 
 
@@ -15,13 +22,13 @@ TODO
     adicionar botao é uniforme para o campo eletrico
     criar temas
     dar funcoes aos itens do menu
-    a particula as vezes consegue fugir da darea
 *****************************************************************************************************************************************************/
 
 
 /*****************************************************************************************************************************************************
 ERROS
     a particula as vezes consegue fugir da darea
+    nos spin buttons o valor so é atualizado quando clicamos nos butoes de lado, dar enter nao funciona por exemplo
 *****************************************************************************************************************************************************/
 
 
@@ -398,6 +405,14 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     cairo_matrix_init(&matrix, 1, 0, 0, -1, darea_width/2, darea_height/2);
     cairo_transform(cr, &matrix);
 
+    //eixos
+    cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+    cairo_move_to (cr, -darea_width/2, 0.0);
+    cairo_line_to (cr, darea_width/2, 0.0);
+    cairo_move_to (cr, 0.0, -darea_height/2);
+    cairo_line_to (cr, 0.0, darea_height/2);
+    cairo_stroke (cr);
+
     //desenhar a particula
     cairo_set_source_rgb(cr, 0., 0.5, 0.5);
     cairo_set_line_width (cr, 4.0);
@@ -500,6 +515,7 @@ int main(int argc, char **argv)
     //frame drawing area
     GtkWidget *frame_drawing_area;
     frame_drawing_area = gtk_frame_new("Simulação");
+    gtk_frame_set_label_align(GTK_FRAME(frame_drawing_area), 0.5, 1.);
     gtk_box_pack_start(GTK_BOX(hbox1), frame_drawing_area, TRUE, TRUE, 0);
     gtk_widget_set_margin_start(frame_drawing_area, 5);
     gtk_widget_set_margin_end(frame_drawing_area, 5);
@@ -513,7 +529,7 @@ int main(int argc, char **argv)
     //frame principal
     GtkWidget *frame_opcoes;
     frame_opcoes = gtk_frame_new("Opções");
-    gtk_frame_set_label_align(GTK_FRAME(frame_opcoes), 0, 0.5);
+    gtk_frame_set_label_align(GTK_FRAME(frame_opcoes), 0.5, 1.);
     gtk_box_pack_end(GTK_BOX(hbox1), frame_opcoes, FALSE, FALSE, 0);
     gtk_widget_set_margin_end(frame_opcoes, 5);
 
