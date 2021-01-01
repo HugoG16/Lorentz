@@ -1,7 +1,7 @@
 /*****************************************************************************************************************************************************
 QUESTOES PARA O PROF
     O QUE DEVEMOS FAZER QUANDO O DENOMINADOR É ZERO?
-        o que estamos a fazer de momento é dizer que 1/0 = DBL_MAX
+        o que estamos a fazer de momento é dizer que 1/0 = DBL_MAX ou INF
     
     A SIMULAÇÃO PARECE QUE ACONTECE "DISCRETAMENTE", AO EM VEZ DE SER CONTINUO E 'SUAVE', O QUE PUDEMOS FAZER PARA CORRIGIR ISSO?
         diminuir o tempo do timeout? diminuir o dt? aumentar?
@@ -12,8 +12,16 @@ QUESTOES PARA O PROF
 /*****************************************************************************************************************************************************
 TODO
     adicionar botao para voltar a simulacao ao inicio
-    os campos de forcas nao aparentao estar corretamente implementados
-        apesar de que se as intensidades dos dois forem 0, o programa corre como esperado
+    adicionar botao é uniforme para o campo eletrico
+    criar temas
+    dar funcoes aos itens do menu
+    a particula as vezes consegue fugir da darea
+*****************************************************************************************************************************************************/
+
+
+/*****************************************************************************************************************************************************
+ERROS
+    a particula as vezes consegue fugir da darea
 *****************************************************************************************************************************************************/
 
 
@@ -27,17 +35,20 @@ TODO
 
 #define MAX_X 800
 #define MAX_Y 800
-#define MAX_VEL 10000
+#define MAX_VEL 5000
 #define MAX_CARGA 10000
 #define MAX_MASSA 10000
 #define MAX_INTENSIDADE_CAMPO_MAGNETICO 10000
 #define MAX_INTENSIDADE_CAMPO_ELETRICO 10000
-#define K_E 10e-5
 
-gdouble dt = 0, dt_temp = 0.001;
-gint width = 1080, height = 850;
+#define DT_NORMAL 10e-3
 
-GtkWidget *window, *darea;
+#define K_E 10e2
+#define INF 10e10
+
+gdouble dt = 0;
+
+GtkWidget *window;
 
 //////////////////////////////////////////// PERSONAL_MATH ////////////////////////////////////////////
 
@@ -360,7 +371,7 @@ gboolean fc_button_parar_tempo(GtkWidget *button_parar_tempo, GtkWidget *button_
 
 gboolean fc_button_continuar_tempo(GtkWidget *button_continuar_tempo, GtkWidget *button_parar_tempo)
 {
-    dt = dt_temp;
+    dt = DT_NORMAL;
     gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
     gtk_widget_set_sensitive(button_parar_tempo, TRUE);
     gtk_widget_set_sensitive(button_continuar_tempo, FALSE);
@@ -375,14 +386,19 @@ gboolean fc_ver_referencial(GtkWidget *w)
 
 //////////////////////////////////////////// DRAWING ////////////////////////////////////////////
 
-//TA PESSIMO E SO PARA TESTAAR SE DAVA AO MENOS
-gboolean on_draw_event(GtkWidget *widget, cairo_t *cr)
+gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
 {
     static gint darea_width = 0, darea_height = 0;
-    darea_height = gtk_widget_get_allocated_height(darea);
     darea_width = gtk_widget_get_allocated_width(darea);
+    darea_height = gtk_widget_get_allocated_height(darea);   
     double temp;
 
+    //transformar o plano tal que a origem esteja no centro da darea e que os vetores ex e ey sejam os convencionados
+    cairo_matrix_t matrix;
+    cairo_matrix_init(&matrix, 1, 0, 0, -1, darea_width/2, darea_height/2);
+    cairo_transform(cr, &matrix);
+
+    //desenhar a particula
     cairo_set_source_rgb(cr, 0., 0.5, 0.5);
     cairo_set_line_width (cr, 4.0);
     cairo_arc (cr, particula.r.x, particula.r.y, 5, 0., 2 * M_PI);
@@ -403,9 +419,9 @@ gboolean on_draw_event(GtkWidget *widget, cairo_t *cr)
         if (vetor_distancia(particula.r, campo_eletrico.origem) != 0)
             temp = K_E * campo_eletrico.intensidade / QUADRADO( vetor_distancia(particula.r, campo_eletrico.origem) );
         else
-            temp = DBL_MAX;
+            temp = INF;
 
-        campo_eletrico.E = vetor_escalar(temp, vetor_unitario_AB(particula.r, campo_eletrico.origem));
+        campo_eletrico.E = vetor_escalar(temp, vetor_unitario_AB(campo_eletrico.origem, particula.r));
     }
     
 
@@ -414,14 +430,19 @@ gboolean on_draw_event(GtkWidget *widget, cairo_t *cr)
     if (particula.massa != 0)
         particula.a = vetor_escalar(1/particula.massa, particula.F); 
     else
-        particula.a = vetor_escalar(DBL_MAX, particula.F); 
-    particula.v = vetor_somar(particula.v, vetor_escalar(dt, particula.a));
+        particula.a = vetor_escalar(INF, particula.F); 
+    
 
-    if(particula.r.x < 0 || particula.r.x > darea_width)
+    if(particula.r.x < -darea_width/2 || particula.r.x > darea_width/2)
         particula.v.x *= -1;
     
-    if(particula.r.y < 0 || particula.r.y > darea_height)
+    if(particula.r.y < -darea_height/2 || particula.r.y > darea_height/2)
         particula.v.y *= -1;
+
+    particula.v = vetor_somar(particula.v, vetor_escalar(dt, particula.a));
+
+    if(vetor_norma(particula.v) > MAX_VEL)
+        particula.v = vetor_escalar(MAX_VEL, vetor_unitario(particula.v));
     
     particula.r = vetor_somar(particula.r, vetor_escalar(dt, particula.v));
 
@@ -444,14 +465,17 @@ gboolean time_handler (GtkWidget *widget)
 int main(int argc, char **argv)
 {
     setlocale(LC_ALL, "");
+
+    GtkWidget *darea;
+
     gtk_init(&argc, &argv);
 
     provider_create_from_file ("themes/dark.css");
 
     //iniciar
-    particula = criar_particula(vetor_criar(500,500,0), 3, 5000, 1, 1);
-    campo_magnetico = criar_campo_magnetico(1, 50);
-    campo_eletrico = criar_campo_eletrico(TRUE, vetor_criar(-1, -2, 0), 0, 5);
+    particula = criar_particula(vetor_criar(100,50,0), 3*M_PI_2, 100, -10, 1);
+    campo_magnetico = criar_campo_magnetico(1, 0);
+    campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 500);
     opcoes = criar_opcoes(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, elastica, claro);
 
     //criar janela
@@ -1028,7 +1052,7 @@ int main(int argc, char **argv)
 
 //////////////////////// FIM ////////////////////
 
-    g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_draw_event), NULL);
+    g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_draw_event), darea);
     
     //ciclo timeout
     g_timeout_add (30, (GSourceFunc) time_handler, darea);
