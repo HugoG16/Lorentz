@@ -2,11 +2,7 @@
 QUESTOES PARA O PROF
     O QUE DEVEMOS FAZER QUANDO O DENOMINADOR É ZERO?
         o que estamos a fazer de momento é dizer que 1/0 = DBL_MAX ou INF
-    
-    talvez esteja resolvido - A SIMULAÇÃO PARECE QUE ACONTECE "DISCRETAMENTE", AO EM VEZ DE SER CONTINUO E 'SUAVE', O QUE PUDEMOS FAZER PARA CORRIGIR ISSO?
-        diminuir o tempo do timeout? diminuir o dt? aumentar?
-        será algum problema de otimizaçao?
-    
+       
     nos spin buttons o valor so é atualizado quando clicamos nos butoes de lado, dar enter nao funciona por exemplo
         QUAL SERA O EVENT?
     
@@ -18,8 +14,6 @@ QUESTOES PARA O PROF
 
 /*****************************************************************************************************************************************************
 TODO
-    adicionar botao para voltar a simulacao ao inicio
-    adicionar botao é uniforme para o campo eletrico
     criar temas
     dar funcoes aos itens do menu
 *****************************************************************************************************************************************************/
@@ -43,19 +37,22 @@ ERROS
 #define MAX_X 800
 #define MAX_Y 800
 #define MAX_VEL 5000
-#define MAX_CARGA 10000
-#define MAX_MASSA 10000
-#define MAX_INTENSIDADE_CAMPO_MAGNETICO 10000
+#define MAX_CARGA 100
+#define MAX_MASSA 100
+#define MAX_INTENSIDADE_CAMPO_MAGNETICO 100
 #define MAX_INTENSIDADE_CAMPO_ELETRICO 10000
+
+#define NUM_ELEMENTOS_TRAJETORIA 200
 
 #define DT_NORMAL 10e-3
 
-#define K_E 10e2
+#define K_E 10e3
 #define INF 10e10
 
 gdouble dt = 0;
 
-GtkWidget *window;
+GtkWidget *window, *window_opcoes;
+FILE *data;
 
 //////////////////////////////////////////// PERSONAL_MATH ////////////////////////////////////////////
 
@@ -163,12 +160,13 @@ typedef struct estrutura_campo_eletrico //se for uniforme nao existe origem; se 
     double angulo, intensidade; //intensidade "e a carga da particula geradora"    
 }estrutura_campo_eletrico;
 
-typedef enum tenum_temaema{claro, escuro} enum_tema;
-typedef enum enum_tipo_colisao{elastica, pausar} enum_tipo_colisao;
+typedef enum enum_tema{claro, escuro} enum_tema;
 
 typedef struct estrutura_opcoes
 {
-    gboolean ver_referencial, 
+    double escala;
+    gboolean ver_opcoes,
+            ver_referencial, 
             ver_forca,
             ver_acelaracao,
             ver_velocidade,
@@ -176,14 +174,13 @@ typedef struct estrutura_opcoes
             ver_posicao_inicial,
             ver_campo_eletrico,
             ver_campo_magnetico,
-            ver_tragetoria,
+            ver_trajetoria,
             campo_eletrico_unicorme,
 
             abrir_grafico_posicao,
             abrir_grafico_velocidade,
             abrir_grafico_acelaracao,
             abrir_grafico_energia;
-    enum_tipo_colisao tipo_colisao;
     enum_tema tema;
 }estrutura_opcoes;
 
@@ -205,6 +202,16 @@ void provider_create_from_file(gchar *file_name)
 
   g_object_unref (provider);
 }
+
+gboolean fechar_programa()
+{
+    printf("- A fechar -\n");
+    fclose(data);
+    printf("Ficheiro data.bin fechado com sucesso.\n");
+    gtk_main_quit();
+    printf("Gtk foi encerrado com sucesso.\n");
+    return FALSE;
+} 
 
 estrutura_particula criar_particula(vetor r0, double angulo_velocidade_inicial, double intensidade_velocidade_inicial, double carga, double massa)
 {
@@ -247,7 +254,9 @@ estrutura_campo_eletrico criar_campo_eletrico(gboolean e_uniforme, vetor origem,
     return campo_eletrico;
 }
 
-estrutura_opcoes criar_opcoes(gboolean ver_referencial, 
+estrutura_opcoes criar_opcoes(double escala,
+                            gboolean ver_opcoes,
+                            gboolean ver_referencial, 
                             gboolean ver_forca,
                             gboolean ver_acelaracao,
                             gboolean ver_velocidade,
@@ -255,17 +264,18 @@ estrutura_opcoes criar_opcoes(gboolean ver_referencial,
                             gboolean ver_posicao_inicial,
                             gboolean ver_campo_eletrico,
                             gboolean ver_campo_magnetico,
-                            gboolean ver_tragetoria,
+                            gboolean ver_trajetoria,
                             gboolean campo_eletrico_unicorme,
                             gboolean abrir_grafico_posicao,
                             gboolean abrir_grafico_velocidade,
                             gboolean abrir_grafico_acelaracao,
                             gboolean abrir_grafico_energia,
-                            enum_tipo_colisao tipo_colisao,
                             enum_tema tema)
 {
     estrutura_opcoes opcoes;
 
+    opcoes.escala = escala;
+    opcoes.ver_opcoes = ver_opcoes;
     opcoes.ver_referencial = ver_referencial;
     opcoes.ver_forca = ver_forca;
     opcoes.ver_acelaracao = ver_acelaracao;
@@ -274,19 +284,19 @@ estrutura_opcoes criar_opcoes(gboolean ver_referencial,
     opcoes.ver_posicao_inicial = ver_posicao_inicial;
     opcoes.ver_campo_eletrico = ver_campo_eletrico;
     opcoes.ver_campo_magnetico = ver_campo_magnetico;
-    opcoes.ver_tragetoria = ver_tragetoria;
+    opcoes.ver_trajetoria = ver_trajetoria;
     opcoes.campo_eletrico_unicorme = campo_eletrico_unicorme;
     opcoes.abrir_grafico_posicao = abrir_grafico_posicao;
     opcoes.abrir_grafico_velocidade = abrir_grafico_velocidade;
     opcoes.abrir_grafico_acelaracao = abrir_grafico_acelaracao;
     opcoes.abrir_grafico_energia = abrir_grafico_energia;
-    opcoes.tipo_colisao = tipo_colisao;
     opcoes.tema = tema;
 
     return opcoes;
 }
 
 estrutura_particula particula;
+estrutura_particula trajetoria;
 estrutura_campo_magnetico campo_magnetico;
 estrutura_campo_eletrico campo_eletrico;
 estrutura_opcoes opcoes;
@@ -343,6 +353,12 @@ gboolean fc_spin_button_intensidade_campo_magnetico(GtkWidget *w)
     return FALSE;
 }
 
+gboolean fc_check_button_campo_eletrico_uniforme(GtkWidget *w)
+{
+    campo_eletrico.e_uniforme =  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
 gboolean fc_spin_button_x_origem_campo_eletrico(GtkWidget *w)
 {
     campo_eletrico.origem.x =  gtk_spin_button_get_value(GTK_SPIN_BUTTON(w));
@@ -376,6 +392,16 @@ gboolean fc_button_parar_tempo(GtkWidget *button_parar_tempo, GtkWidget *button_
     return FALSE;
 }
 
+gboolean fc_button_reiniciar(GtkWidget *w)
+{
+    particula.r = particula.r0;
+    particula.v = vetor_criar(cos(particula.angulo_velocidade_inicial), sin(particula.angulo_velocidade_inicial), 0);
+    particula.v = vetor_escalar(particula.intensidade_velocidade_inicial, particula.v);
+    particula.a = vetor_criar(0, 0, 0);
+    particula.F = vetor_criar(0, 0, 0);
+    return FALSE;
+}
+
 gboolean fc_button_continuar_tempo(GtkWidget *button_continuar_tempo, GtkWidget *button_parar_tempo)
 {
     dt = DT_NORMAL;
@@ -385,9 +411,31 @@ gboolean fc_button_continuar_tempo(GtkWidget *button_continuar_tempo, GtkWidget 
     return FALSE;
 }
 
+gboolean fc_scale_escala(GtkWidget *w)
+{
+    opcoes.escala = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_ver_opcoes(GtkWidget *w, GtkWidget *window_opcoes)
+{
+    opcoes.ver_opcoes =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
+    if (! opcoes.ver_opcoes)
+         gtk_widget_hide(window_opcoes);
+    else
+        gtk_widget_show_all(window_opcoes);
+    return FALSE;
+}
+
 gboolean fc_ver_referencial(GtkWidget *w)
 {
     opcoes.ver_referencial =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
+    return FALSE;
+}
+
+gboolean fc_ver_trajetoria(GtkWidget *w)
+{
+    opcoes.ver_trajetoria =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
     return FALSE;
 }
 
@@ -395,6 +443,14 @@ gboolean fc_ver_referencial(GtkWidget *w)
 
 gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
 {
+    if (dt) //so guardamos a informacao da particula caso a simulacao esteja a decorrer
+        {
+            if ( fseek(data, 0, SEEK_END) != 0 )
+                printf("    ERR - erro ao tentar ir para o fim do ficheiro\n");
+            if ( fwrite(&particula, sizeof(estrutura_particula), 1, data) != 1 )
+                printf("    ERR - erro ao tentar escrever no fim do ficheiro\n");
+        }
+
     static gint darea_width = 0, darea_height = 0;
     darea_width = gtk_widget_get_allocated_width(darea);
     darea_height = gtk_widget_get_allocated_height(darea);   
@@ -405,18 +461,50 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     cairo_matrix_init(&matrix, 1, 0, 0, -1, darea_width/2, darea_height/2);
     cairo_transform(cr, &matrix);
 
-    //eixos
-    cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
-    cairo_move_to (cr, -darea_width/2, 0.0);
-    cairo_line_to (cr, darea_width/2, 0.0);
-    cairo_move_to (cr, 0.0, -darea_height/2);
-    cairo_line_to (cr, 0.0, darea_height/2);
-    cairo_stroke (cr);
+    //desenhar eixos
+    if (opcoes.ver_referencial)
+    {
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_move_to (cr, -darea_width/2, 0.0);
+        cairo_line_to (cr, darea_width/2, 0.0);
+        cairo_move_to (cr, 0.0, -darea_height/2);
+        cairo_line_to (cr, 0.0, darea_height/2);
+        cairo_stroke (cr);
+    }
+    
+    cairo_scale(cr, opcoes.escala, opcoes.escala);
 
+    //desenhar trajetoria
+    if (opcoes.ver_trajetoria)
+    {
+        cairo_set_source_rgba(cr, 1., 0., 0., 0.4);
+        cairo_set_line_width (cr, 2.0);
+        if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+        {   
+            for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+            {
+                if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                    cairo_line_to(cr, trajetoria.r.x, trajetoria.r.y);
+            }
+        }
+        else
+        {
+            fseek(data, 0, SEEK_SET);
+            fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+            for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+            {
+                if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                    cairo_line_to(cr, trajetoria.r.x, trajetoria.r.y);
+            }
+        }
+        cairo_stroke (cr);
+    }
+    
     //desenhar a particula
     cairo_set_source_rgb(cr, 0., 0.5, 0.5);
     cairo_set_line_width (cr, 4.0);
-    cairo_arc (cr, particula.r.x, particula.r.y, 5, 0., 2 * M_PI);
+    cairo_arc (cr, particula.r.x, particula.r.y, 10, 0., 2 * M_PI);
     cairo_fill (cr);
 
     //update campo magnetico
@@ -448,20 +536,20 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
         particula.a = vetor_escalar(INF, particula.F); 
     
 
-    if(particula.r.x < -darea_width/2 || particula.r.x > darea_width/2)
+    if(particula.r.x < -darea_width/2 /opcoes.escala || particula.r.x > darea_width/2 /opcoes.escala)
         particula.v.x *= -1;
     
-    if(particula.r.y < -darea_height/2 || particula.r.y > darea_height/2)
+    if(particula.r.y < -darea_height/2 /opcoes.escala || particula.r.y > darea_height/2 /opcoes.escala)
         particula.v.y *= -1;
 
     particula.v = vetor_somar(particula.v, vetor_escalar(dt, particula.a));
 
+    //maximar velocidade
     if(vetor_norma(particula.v) > MAX_VEL)
         particula.v = vetor_escalar(MAX_VEL, vetor_unitario(particula.v));
     
     particula.r = vetor_somar(particula.r, vetor_escalar(dt, particula.v));
 
-    //printf("dt = %lf, x = %lf, y = %lf\n", dt, particula.r.x, particula.r.y);
     return FALSE;
 }
 
@@ -482,6 +570,7 @@ int main(int argc, char **argv)
     setlocale(LC_ALL, "");
 
     GtkWidget *darea;
+    data = fopen("data.bin", "wb+");
 
     gtk_init(&argc, &argv);
 
@@ -490,8 +579,8 @@ int main(int argc, char **argv)
     //iniciar
     particula = criar_particula(vetor_criar(100,50,0), 3*M_PI_2, 100, -10, 1);
     campo_magnetico = criar_campo_magnetico(1, 0);
-    campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 500);
-    opcoes = criar_opcoes(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, elastica, claro);
+    campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 50);
+    opcoes = criar_opcoes(1, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
 
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -499,8 +588,15 @@ int main(int argc, char **argv)
     gtk_window_set_default_size(GTK_WINDOW(window), 1080,  800);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
+    //criar janela opcoes
+    window_opcoes = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window_opcoes), "Força de Lorentz - Opções");
+    gtk_window_set_default_size(GTK_WINDOW(window_opcoes), 400,  400);
+    gtk_window_set_position(GTK_WINDOW(window_opcoes), GTK_WIN_POS_CENTER);
+
     //conectar botao de fecho
-    g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(fechar_programa), NULL);
+    g_signal_connect(G_OBJECT(window_opcoes), "destroy", G_CALLBACK(fechar_programa), NULL);
 
     //vbox1
     GtkWidget *vbox1;
@@ -519,6 +615,7 @@ int main(int argc, char **argv)
     gtk_box_pack_start(GTK_BOX(hbox1), frame_drawing_area, TRUE, TRUE, 0);
     gtk_widget_set_margin_start(frame_drawing_area, 5);
     gtk_widget_set_margin_end(frame_drawing_area, 5);
+    gtk_widget_set_margin_bottom(frame_drawing_area, 5);
 
     //drawing area 
     darea = gtk_drawing_area_new();
@@ -526,17 +623,16 @@ int main(int argc, char **argv)
 
 //////////////////////// OPCOES ////////////////////
 
-    //frame principal
+    /* //frame opcoes
     GtkWidget *frame_opcoes;
     frame_opcoes = gtk_frame_new("Opções");
     gtk_frame_set_label_align(GTK_FRAME(frame_opcoes), 0.5, 1.);
-    gtk_box_pack_end(GTK_BOX(hbox1), frame_opcoes, FALSE, FALSE, 0);
-    gtk_widget_set_margin_end(frame_opcoes, 5);
+    gtk_container_add(GTK_CONTAINER(window_opcoes), frame_opcoes); */
 
     //box opcoes
     GtkWidget *box_opcoes;
     box_opcoes = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_add(GTK_CONTAINER(frame_opcoes), box_opcoes);
+    gtk_container_add(GTK_CONTAINER(window_opcoes), box_opcoes);
 
 //////////////////////// VARIAVEIS ////////////////////
 
@@ -550,7 +646,7 @@ int main(int argc, char **argv)
 
     //box variaveis
     GtkWidget *box_variaveis;
-    box_variaveis = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
+    box_variaveis = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
     gtk_container_add(GTK_CONTAINER(frame_variaveis), box_variaveis);
 
 //////////////////////// PARTICULA ////////////////////
@@ -561,7 +657,8 @@ int main(int argc, char **argv)
     gtk_frame_set_label_align(GTK_FRAME(frame_particula), 0.1, 0.5);
     gtk_widget_set_margin_start(frame_particula, 10);
     gtk_widget_set_margin_end(frame_particula, 10);
-    gtk_box_pack_start(GTK_BOX(box_variaveis), frame_particula, FALSE, FALSE, 0);
+    gtk_widget_set_margin_bottom(frame_particula, 10);
+    gtk_box_pack_start(GTK_BOX(box_variaveis), frame_particula, TRUE, TRUE, 0);
 
     //box particula
     GtkWidget *box_particula;
@@ -576,7 +673,7 @@ int main(int argc, char **argv)
     gtk_frame_set_label_align(GTK_FRAME(frame_posicao_inicial_particula), 0.1, 0.5);
     gtk_widget_set_margin_start(frame_posicao_inicial_particula, 10);
     gtk_widget_set_margin_end(frame_posicao_inicial_particula, 10);
-    gtk_box_pack_start(GTK_BOX(box_particula), frame_posicao_inicial_particula, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box_particula), frame_posicao_inicial_particula, TRUE, TRUE, 0);
 
     //box posicao inicial particula
     GtkWidget *box_posicao_inicial_particula;
@@ -629,7 +726,7 @@ int main(int argc, char **argv)
     gtk_frame_set_label_align(GTK_FRAME(frame_velocidade_inicial_particula), 0.1, 0.5);
     gtk_widget_set_margin_start(frame_velocidade_inicial_particula, 10);
     gtk_widget_set_margin_end(frame_velocidade_inicial_particula, 10);
-    gtk_box_pack_start(GTK_BOX(box_particula), frame_velocidade_inicial_particula, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box_particula), frame_velocidade_inicial_particula, TRUE, TRUE, 0);
 
     //box velocidade inicial particula
     GtkWidget *box_velocidade_inicial_particula;
@@ -665,7 +762,7 @@ int main(int argc, char **argv)
 
     //label intensidade velocidade inicial particula
     GtkWidget *label_intensidade_velocidade_inicial_particula;
-    label_intensidade_velocidade_inicial_particula = gtk_label_new("Intensidade");
+    label_intensidade_velocidade_inicial_particula = gtk_label_new("Intensidade ");
     gtk_widget_set_margin_start(label_intensidade_velocidade_inicial_particula, 10);
     gtk_box_pack_start(GTK_BOX(box_intensidade_velocidade_inicial_particula), label_intensidade_velocidade_inicial_particula, FALSE, FALSE, 0);
 
@@ -680,7 +777,7 @@ int main(int argc, char **argv)
     //box carga particula
     GtkWidget *box_carga_particula;
     box_carga_particula = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_box_pack_start(GTK_BOX(box_particula), box_carga_particula, FALSE, FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(box_particula), box_carga_particula, TRUE, TRUE, 5);
 
     //label carga particula
     GtkWidget *label_carga_particula;
@@ -699,7 +796,7 @@ int main(int argc, char **argv)
     //box massa particula
     GtkWidget *box_massa_particula;
     box_massa_particula = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_box_pack_start(GTK_BOX(box_particula), box_massa_particula, FALSE, FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(box_particula), box_massa_particula, TRUE, TRUE, 5);
 
     //label massa particula
     GtkWidget *label_massa_particula;
@@ -717,13 +814,17 @@ int main(int argc, char **argv)
 
 //////////////////////// CAMPO MAGNETICO ////////////////////
 
+    //box campos
+    GtkWidget *box_campos;
+    box_campos = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_variaveis), box_campos, TRUE, TRUE, 0);
+
     //frame campo magnetico
     GtkWidget *frame_campo_magnetico;
     frame_campo_magnetico = gtk_frame_new("Campo magnético");
     gtk_frame_set_label_align(GTK_FRAME(frame_campo_magnetico), 0.1, 0.5);
-    gtk_widget_set_margin_start(frame_campo_magnetico, 10);
     gtk_widget_set_margin_end(frame_campo_magnetico, 10);
-    gtk_box_pack_start(GTK_BOX(box_variaveis), frame_campo_magnetico, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box_campos), frame_campo_magnetico, FALSE, FALSE, 0);
 
     //box campo magnetico
     GtkWidget *box_campo_magnetico;
@@ -766,17 +867,22 @@ int main(int argc, char **argv)
     GtkWidget *frame_campo_eletrico;
     frame_campo_eletrico = gtk_frame_new("Campo elétrico");
     gtk_frame_set_label_align(GTK_FRAME(frame_campo_eletrico), 0.1, 0.5);
-    gtk_widget_set_margin_start(frame_campo_eletrico, 10);
     gtk_widget_set_margin_end(frame_campo_eletrico, 10);
     gtk_widget_set_margin_bottom(frame_campo_eletrico, 10);
-    gtk_box_pack_start(GTK_BOX(box_variaveis), frame_campo_eletrico, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box_campos), frame_campo_eletrico, FALSE, FALSE, 0);
 
-    //box campo magnetico
+    //box campo eletrico
     GtkWidget *box_campo_eletrico;
     box_campo_eletrico = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(frame_campo_eletrico), box_campo_eletrico);
 
-//////////////////////// ORIGEM CAMPO ELETRICO ////////////////////
+    //check button campo eletrico uniforme
+    GtkWidget *check_button_campo_eletrico_uniforme;
+    check_button_campo_eletrico_uniforme = gtk_check_button_new_with_label("Campo elétrico uniforme");
+    gtk_widget_set_margin_start(check_button_campo_eletrico_uniforme, 10);
+    gtk_widget_set_margin_end(check_button_campo_eletrico_uniforme, 10);
+    gtk_box_pack_start(GTK_BOX(box_campo_eletrico), check_button_campo_eletrico_uniforme, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(check_button_campo_eletrico_uniforme), "toggled", G_CALLBACK(fc_check_button_campo_eletrico_uniforme), NULL);
 
     //frame origem campo eletrico
     GtkWidget *frame_origem_campo_eletrico;
@@ -858,7 +964,7 @@ int main(int argc, char **argv)
 
     //label intensidade campo eletrico
     GtkWidget *label_intensidade_campo_eletrico;
-    label_intensidade_campo_eletrico = gtk_label_new("Intensidade / Carga");
+    label_intensidade_campo_eletrico = gtk_label_new("Intensidade");
     gtk_widget_set_margin_start(label_intensidade_campo_eletrico, 10);
     gtk_box_pack_start(GTK_BOX(box_intensidade_campo_eletrico), label_intensidade_campo_eletrico, FALSE, FALSE, 0);
 
@@ -891,6 +997,14 @@ int main(int argc, char **argv)
     gtk_widget_set_margin_top(button_parar_tempo, 5);
     gtk_widget_set_margin_bottom(button_parar_tempo, 5);
     
+    //button reiniciar simulacao
+    GtkWidget *button_reiniciar;
+    button_reiniciar = gtk_button_new_with_label("Reiniciar");
+    gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_reiniciar, TRUE, TRUE, 0);
+    gtk_widget_set_margin_top(button_reiniciar, 5);
+    gtk_widget_set_margin_bottom(button_reiniciar, 5);
+    g_signal_connect(G_OBJECT(button_reiniciar), "pressed", G_CALLBACK(fc_button_reiniciar), NULL);
+
     //button continuar tempo
     button_continuar_tempo = gtk_button_new_with_label("Continuar");
     gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_continuar_tempo, TRUE, TRUE, 0);
@@ -901,6 +1015,30 @@ int main(int argc, char **argv)
     g_signal_connect(G_OBJECT(button_continuar_tempo), "pressed", G_CALLBACK(fc_button_continuar_tempo), button_parar_tempo);
 
     fc_button_parar_tempo(button_parar_tempo, button_continuar_tempo);
+
+    //frame escala
+    GtkWidget *frame_escala;
+    frame_escala = gtk_frame_new("Zoom");
+    gtk_frame_set_label_align(GTK_FRAME(frame_escala), 0.05, 0.5);
+    gtk_widget_set_margin_start(frame_escala, 10);
+    gtk_widget_set_margin_end(frame_escala, 10);
+    gtk_widget_set_margin_bottom(frame_escala, 10);
+    gtk_box_pack_start(GTK_BOX(box_opcoes), frame_escala, FALSE, FALSE, 0);
+
+    //box escala
+    GtkWidget *box_escala;
+    box_escala = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(frame_escala), box_escala);
+
+    //scale escala
+    GtkWidget  *scale_escala;
+    scale_escala = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.5, 2, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_escala), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_escala), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_escala, 20);
+    gtk_box_pack_end(GTK_BOX(box_escala), scale_escala, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_escala), opcoes.escala);
+    g_signal_connect(G_OBJECT(scale_escala), "value_changed", G_CALLBACK(fc_scale_escala), NULL);
 
 //////////////////////// MENU BAR ////////////////////
 
@@ -918,64 +1056,75 @@ int main(int argc, char **argv)
     menu_visualizacao = gtk_menu_new();
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(item_visualizacao), menu_visualizacao);
 
+    //ver opcoes
+    GtkWidget *ver_opcoes;
+    ver_opcoes = gtk_check_menu_item_new_with_label("Ver menu de opções");
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_opcoes);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_opcoes), opcoes.ver_opcoes);
+    g_signal_connect(G_OBJECT(ver_opcoes), "activate", G_CALLBACK(fc_ver_opcoes), window_opcoes);
+
     //ver referencial
     GtkWidget *ver_referencial;
     ver_referencial = gtk_check_menu_item_new_with_label("Ver referencial");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_referencial);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_referencial), TRUE);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_referencial), opcoes.ver_referencial);
     g_signal_connect(G_OBJECT(ver_referencial), "activate", G_CALLBACK(fc_ver_referencial), NULL);
 
     //ver F
     GtkWidget *ver_forca;
     ver_forca = gtk_check_menu_item_new_with_label("Ver vetor força");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_forca);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_forca), opcoes.ver_forca);
 
     //ver a
     GtkWidget *ver_acelaracao;
     ver_acelaracao = gtk_check_menu_item_new_with_label("Ver vetor acelaração");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_acelaracao);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_acelaracao), opcoes.ver_acelaracao);
 
     //ver v
     GtkWidget *ver_velocidade;
     ver_velocidade = gtk_check_menu_item_new_with_label("Ver vetor velocidade");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_velocidade);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_velocidade), opcoes.ver_velocidade);
 
     //ver r
     GtkWidget *ver_posicao;
     ver_posicao = gtk_check_menu_item_new_with_label("Ver vetor posição");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_posicao);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_posicao), opcoes.ver_posicao);
 
     //ver r0
     GtkWidget *ver_posicao_inicial;
     ver_posicao_inicial = gtk_check_menu_item_new_with_label("Ver vetor posição inicial");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_posicao_inicial);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_posicao_inicial), opcoes.ver_posicao_inicial);
 
     //ver B
     GtkWidget *ver_campo_magnetico;
     ver_campo_magnetico = gtk_check_menu_item_new_with_label("Ver vetor campo magnético");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_campo_magnetico);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_campo_magnetico), opcoes.ver_campo_magnetico);
 
     //ver E
     GtkWidget *ver_campo_eletrico;
     ver_campo_eletrico = gtk_check_menu_item_new_with_label("Ver vetor campo elétrico");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_campo_eletrico);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_campo_eletrico), opcoes.ver_campo_eletrico);
 
     //separador
     GtkWidget *separador1;
     separador1 = gtk_separator_menu_item_new();
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), separador1);
 
-    //ver tragetoria
-    GtkWidget *ver_tragetoria;
-    ver_tragetoria = gtk_check_menu_item_new_with_label("Ver tragetória");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_tragetoria);
+    //ver trajetoria
+    GtkWidget *ver_trajetoria;
+    ver_trajetoria = gtk_check_menu_item_new_with_label("Ver trajetória");
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_trajetoria);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_trajetoria), opcoes.ver_trajetoria);
+    g_signal_connect(G_OBJECT(ver_trajetoria), "activate", G_CALLBACK(fc_ver_trajetoria), NULL);
 
-    //campo eletrico uniforme
-    GtkWidget *campo_eletrico_uniforme;
-    campo_eletrico_uniforme = gtk_check_menu_item_new_with_label("Campo elétrico uniforme");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), campo_eletrico_uniforme);
-
-//////////////////////// VISUALIZACAO ////////////////////
+//////////////////////// GRAFICOS ////////////////////
 
     GtkWidget *item_abrir_graficos;
     item_abrir_graficos = gtk_menu_item_new_with_label("Abrir gráficos");
@@ -1004,30 +1153,6 @@ int main(int argc, char **argv)
     GtkWidget *abrir_grafico_energia;
     abrir_grafico_energia = gtk_check_menu_item_new_with_label("Abrir gráfico E(t)");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_abrir_graficos), abrir_grafico_energia);
-
-//////////////////////// borda ////////////////////
-
-    GtkWidget *item_borda;
-    item_borda = gtk_menu_item_new_with_label("Interação com a borda");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menubar), item_borda);
-
-    GtkWidget *menu_borda;
-    menu_borda = gtk_menu_new();
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(item_borda), menu_borda);
-    
-    GSList *opcoes_borda = NULL;
-
-    //colicao elastica
-    GtkWidget *borda_colicao_elastica;
-    borda_colicao_elastica = gtk_radio_menu_item_new_with_label(opcoes_borda, "Colição elástica");
-    opcoes_borda = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(borda_colicao_elastica));
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_borda), borda_colicao_elastica);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(borda_colicao_elastica), TRUE);
-
-    //para simulacao
-    GtkWidget *borda_parar_simulacao;
-    borda_parar_simulacao = gtk_radio_menu_item_new_with_label(opcoes_borda, "Parar simulação");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_borda), borda_parar_simulacao);
 
 //////////////////////// TEMA ////////////////////
 
@@ -1064,7 +1189,7 @@ int main(int argc, char **argv)
     GtkWidget *item_fechar;
     item_fechar = gtk_menu_item_new_with_label("Fechar");
     gtk_menu_shell_append(GTK_MENU_SHELL(menubar), item_fechar);
-    g_signal_connect(G_OBJECT(item_fechar), "activate", G_CALLBACK(gtk_main_quit), NULL);
+    g_signal_connect(G_OBJECT(item_fechar), "activate", G_CALLBACK(fechar_programa), NULL);
 
 //////////////////////// FIM ////////////////////
 
@@ -1075,6 +1200,7 @@ int main(int argc, char **argv)
     
     //gtk main
     gtk_widget_show_all(window);
+    gtk_widget_show_all(window_opcoes);
     gtk_main();
     return 0;
 }
