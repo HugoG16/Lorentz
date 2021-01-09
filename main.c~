@@ -651,7 +651,7 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     }
     
     //desenhar a particula
-    cairo_set_source_rgb(cr, 0., 0.5, 2.5);
+    cairo_set_source_rgb(cr, 0., 0.5, 0.5);
     cairo_set_line_width (cr, 4.0);
     cairo_arc (cr, particula.r.x, particula.r.y, 10, 0., 2 * M_PI);
     cairo_fill (cr);
