@@ -42,7 +42,10 @@ ERROS
 #define MAX_INTENSIDADE_CAMPO_MAGNETICO 100
 #define MAX_INTENSIDADE_CAMPO_ELETRICO 10000
 
-#define NUM_ELEMENTOS_TRAJETORIA 200
+#define GRAFICO_ESCALA_MIN 0.01
+#define GRAFICO_ESCALA_MAX 10
+
+#define NUM_ELEMENTOS_TRAJETORIA 400
 
 #define DT_NORMAL 10e-3
 
@@ -51,7 +54,7 @@ ERROS
 
 gdouble dt = 0;
 
-GtkWidget *window, *window_opcoes;
+GtkWidget *window;
 FILE *data;
 
 //////////////////////////////////////////// PERSONAL_MATH ////////////////////////////////////////////
@@ -164,8 +167,22 @@ typedef enum enum_tema{claro, escuro} enum_tema;
 
 typedef struct estrutura_opcoes
 {
-    double escala;
+    double escala,
+            grafico_posicao_escala_x,
+            grafico_posicao_escala_y,
+            grafico_velocidade_escala_x,
+            grafico_velocidade_escala_y,
+            grafico_acelaracao_escala_x,
+            grafico_acelaracao_escala_y,
+            grafico_energia_escala_x,
+            grafico_energia_escala_y;
     gboolean ver_opcoes,
+            grafico_posicao_ver_x,
+            grafico_posicao_ver_y,
+            grafico_velocidade_ver_x,
+            grafico_velocidade_ver_y,
+            grafico_acelaracao_ver_x,
+            grafico_acelaracao_ver_y,
             ver_referencial, 
             ver_forca,
             ver_acelaracao,
@@ -255,7 +272,21 @@ estrutura_campo_eletrico criar_campo_eletrico(gboolean e_uniforme, vetor origem,
 }
 
 estrutura_opcoes criar_opcoes(double escala,
+                            double grafico_posicao_escala_x,
+                            double grafico_posicao_escala_y,
+                            double grafico_velocidade_escala_x,
+                            double grafico_velocidade_escala_y,
+                            double grafico_acelaracao_escala_x,
+                            double grafico_acelaracao_escala_y,
+                            double grafico_energia_escala_x,
+                            double grafico_energia_escala_y,
                             gboolean ver_opcoes,
+                            gboolean grafico_posicao_ver_x,
+                            gboolean grafico_posicao_ver_y,
+                            gboolean grafico_velocidade_ver_x,
+                            gboolean grafico_velocidade_ver_y,
+                            gboolean grafico_acelaracao_ver_x,
+                            gboolean grafico_acelaracao_ver_y,
                             gboolean ver_referencial, 
                             gboolean ver_forca,
                             gboolean ver_acelaracao,
@@ -275,7 +306,23 @@ estrutura_opcoes criar_opcoes(double escala,
     estrutura_opcoes opcoes;
 
     opcoes.escala = escala;
+    opcoes.grafico_posicao_escala_x = grafico_posicao_escala_x;
+    opcoes.grafico_posicao_escala_y = grafico_posicao_escala_y;
+    opcoes.grafico_velocidade_escala_x = grafico_velocidade_escala_x;
+    opcoes.grafico_velocidade_escala_y = grafico_velocidade_escala_y;
+    opcoes.grafico_acelaracao_escala_x = grafico_acelaracao_escala_x;
+    opcoes.grafico_acelaracao_escala_y = grafico_acelaracao_escala_y;
+    opcoes.grafico_energia_escala_x = grafico_energia_escala_x;
+    opcoes.grafico_energia_escala_y = grafico_energia_escala_y;
     opcoes.ver_opcoes = ver_opcoes;
+
+    opcoes.grafico_posicao_ver_x = grafico_posicao_ver_x;
+    opcoes.grafico_posicao_ver_y = grafico_posicao_ver_y;
+    opcoes.grafico_velocidade_ver_x = grafico_velocidade_ver_x;
+    opcoes.grafico_velocidade_ver_y = grafico_velocidade_ver_y;
+    opcoes.grafico_acelaracao_ver_x = grafico_acelaracao_ver_x;
+    opcoes.grafico_acelaracao_ver_y = grafico_acelaracao_ver_y;
+
     opcoes.ver_referencial = ver_referencial;
     opcoes.ver_forca = ver_forca;
     opcoes.ver_acelaracao = ver_acelaracao;
@@ -419,11 +466,115 @@ gboolean fc_scale_escala(GtkWidget *w)
 
 gboolean fc_ver_opcoes(GtkWidget *w, GtkWidget *window_opcoes)
 {
-    opcoes.ver_opcoes =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
-    if (! opcoes.ver_opcoes)
-         gtk_widget_hide(window_opcoes);
-    else
-        gtk_widget_show_all(window_opcoes);
+    gtk_widget_show_all(window_opcoes);
+    return FALSE;
+}
+
+gboolean fc_abrir_grafico_posicao(GtkWidget *w, GtkWidget *window_grafico_posicao)
+{
+    gtk_widget_show_all(window_grafico_posicao);
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_posicao_escala_x(GtkWidget *w)
+{
+    opcoes.grafico_posicao_escala_x = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_posicao_escala_y(GtkWidget *w)
+{
+    opcoes.grafico_posicao_escala_y = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_posicao_ver_x(GtkWidget *w)
+{
+    opcoes.grafico_posicao_ver_x = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_posicao_ver_y(GtkWidget *w)
+{
+    opcoes.grafico_posicao_ver_y = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_abrir_grafico_velocidade(GtkWidget *w, GtkWidget *window_grafico_velocidade)
+{
+    gtk_widget_show_all(window_grafico_velocidade);
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_velocidade_escala_x(GtkWidget *w)
+{
+    opcoes.grafico_velocidade_escala_x = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_velocidade_escala_y(GtkWidget *w)
+{
+    opcoes.grafico_velocidade_escala_y = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_velocidade_ver_x(GtkWidget *w)
+{
+    opcoes.grafico_velocidade_ver_x = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_velocidade_ver_y(GtkWidget *w)
+{
+    opcoes.grafico_velocidade_ver_y = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_abrir_grafico_acelaracao(GtkWidget *w, GtkWidget *window_grafico_acelaracao)
+{
+    gtk_widget_show_all(window_grafico_acelaracao);
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_acelaracao_escala_x(GtkWidget *w)
+{
+    opcoes.grafico_acelaracao_escala_x = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_acelaracao_escala_y(GtkWidget *w)
+{
+    opcoes.grafico_acelaracao_escala_y = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_acelaracao_ver_x(GtkWidget *w)
+{
+    opcoes.grafico_acelaracao_ver_x = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_acelaracao_ver_y(GtkWidget *w)
+{
+    opcoes.grafico_acelaracao_ver_y = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_abrir_grafico_energia(GtkWidget *w, GtkWidget *window_grafico_energia)
+{
+    gtk_widget_show_all(window_grafico_energia);
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_energia_escala_x(GtkWidget *w)
+{
+    opcoes.grafico_energia_escala_x = gtk_range_get_value(GTK_RANGE(w));
+    return FALSE;
+}
+
+gboolean fc_scale_grafico_energia_escala_y(GtkWidget *w)
+{
+    opcoes.grafico_energia_escala_y = gtk_range_get_value(GTK_RANGE(w));
     return FALSE;
 }
 
@@ -443,13 +594,11 @@ gboolean fc_ver_trajetoria(GtkWidget *w)
 
 gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
 {
-    if (dt) //so guardamos a informacao da particula caso a simulacao esteja a decorrer
-        {
-            if ( fseek(data, 0, SEEK_END) != 0 )
-                printf("    ERR - erro ao tentar ir para o fim do ficheiro\n");
-            if ( fwrite(&particula, sizeof(estrutura_particula), 1, data) != 1 )
-                printf("    ERR - erro ao tentar escrever no fim do ficheiro\n");
-        }
+
+    if ( fseek(data, 0, SEEK_END) != 0 )
+        printf("    ERR - erro ao tentar ir para o fim do ficheiro\n");
+    if ( fwrite(&particula, sizeof(estrutura_particula), 1, data) != 1 )
+        printf("    ERR - erro ao tentar escrever no fim do ficheiro\n");
 
     static gint darea_width = 0, darea_height = 0;
     darea_width = gtk_widget_get_allocated_width(darea);
@@ -553,9 +702,106 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     return FALSE;
 }
 
+gboolean on_draw_event_grafico_posicao(GtkWidget *darea, cairo_t *cr)
+{
+    if (gtk_widget_get_visible(darea))
+    {
+        static gint darea_width = 0, darea_height = 0, mult_width = 0, mult_height = 0;
+        darea_width = gtk_widget_get_allocated_width(darea);
+        darea_height = gtk_widget_get_allocated_height(darea);
+        mult_width = darea_width / NUM_ELEMENTOS_TRAJETORIA;
+        mult_height = 1;
+
+        //transformar o plano tal que a origem esteja no centro da darea à direita e que os vetores ex e ey sejam os convencionados
+        cairo_matrix_t matrix;
+        cairo_matrix_init(&matrix, 1, 0, 0, -1, 0, darea_height/2);
+        cairo_transform(cr, &matrix);
+
+        //desenhar eixos
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_move_to (cr, 0.0, 0.0);
+        cairo_line_to (cr, darea_width, 0.0);
+        cairo_move_to (cr, 0.0, -darea_height/2);
+        cairo_line_to (cr, 0.0, darea_height/2);
+        cairo_stroke (cr);
+
+        //escalar eixos
+        cairo_scale(cr, opcoes.grafico_posicao_escala_x, opcoes.grafico_posicao_escala_y);
+
+        //desenhar grafico x
+        if (opcoes.grafico_posicao_ver_x)
+        {
+            cairo_set_source_rgba(cr, 1., 0., 0., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.r.x);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.r.x);
+                }
+            }
+            cairo_stroke (cr);
+        }
+
+        //desenhar grafico y
+        if (opcoes.grafico_posicao_ver_y)
+        {
+            cairo_set_source_rgba(cr, 0., 0., 1., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.r.y);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.r.y);
+                }
+            }
+            cairo_stroke (cr);
+        }
+    }
+}
+
+gboolean on_draw_event_grafico_velocidade(GtkWidget *darea, cairo_t *cr)
+{
+    ;
+}
+
+gboolean on_draw_event_grafico_acelaracao(GtkWidget *darea, cairo_t *cr)
+{
+    ;
+}
+
+gboolean on_draw_event_grafico_energia(GtkWidget *darea, cairo_t *cr)
+{
+    ;
+}
+
 gboolean time_handler (GtkWidget *widget)
 {
-    if ((!GTK_IS_WIDGET(widget)) || (!gtk_widget_get_window (widget)))
+    if ((!GTK_IS_WIDGET(widget)) /* || (!gtk_widget_get_window (widget)) */)
         return FALSE;
 
     gtk_widget_queue_draw(widget);
@@ -567,9 +813,10 @@ gboolean time_handler (GtkWidget *widget)
 
 int main(int argc, char **argv)
 {
+    GtkWidget *window_opcoes, *window_grafico_posicao, *window_grafico_velocidade, *window_grafico_acelaracao, *window_grafico_energia;
     setlocale(LC_ALL, "");
 
-    GtkWidget *darea;
+    GtkWidget *darea, *darea_grafico_posicao, *darea_grafico_velocidade, *darea_grafico_acelaracao, *darea_grafico_energia;
     data = fopen("data.bin", "wb+");
 
     gtk_init(&argc, &argv);
@@ -580,7 +827,7 @@ int main(int argc, char **argv)
     particula = criar_particula(vetor_criar(100,50,0), 3*M_PI_2, 100, -10, 1);
     campo_magnetico = criar_campo_magnetico(1, 0);
     campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 50);
-    opcoes = criar_opcoes(1, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
+    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
 
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -594,9 +841,37 @@ int main(int argc, char **argv)
     gtk_window_set_default_size(GTK_WINDOW(window_opcoes), 400,  400);
     gtk_window_set_position(GTK_WINDOW(window_opcoes), GTK_WIN_POS_CENTER);
 
+    //criar janela grafico posicao
+    window_grafico_posicao = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window_grafico_posicao), "Força de Lorentz - Gráfico Posicao");
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_posicao), 800,  600);
+    gtk_window_set_position(GTK_WINDOW(window_grafico_posicao), GTK_WIN_POS_CENTER);
+
+    //criar janela grafico velocidade
+    window_grafico_velocidade = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window_grafico_velocidade), "Força de Lorentz - Gráfico Velocidade");
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_velocidade), 800,  600);
+    gtk_window_set_position(GTK_WINDOW(window_grafico_velocidade), GTK_WIN_POS_CENTER);
+
+    //criar janela grafico acelaracao
+    window_grafico_acelaracao = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window_grafico_acelaracao), "Força de Lorentz - Gráfico Acelaracao");
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_acelaracao), 800,  600);
+    gtk_window_set_position(GTK_WINDOW(window_grafico_acelaracao), GTK_WIN_POS_CENTER);
+
+    //criar janela grafico energia
+    window_grafico_energia = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window_grafico_energia), "Força de Lorentz - Gráfico Energia");
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_energia), 800,  600);
+    gtk_window_set_position(GTK_WINDOW(window_grafico_energia), GTK_WIN_POS_CENTER);
+
     //conectar botao de fecho
     g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(fechar_programa), NULL);
-    g_signal_connect(G_OBJECT(window_opcoes), "destroy", G_CALLBACK(fechar_programa), NULL);
+    g_signal_connect(G_OBJECT(window_opcoes), "delete_event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+    g_signal_connect(G_OBJECT(window_grafico_posicao), "delete_event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+    g_signal_connect(G_OBJECT(window_grafico_velocidade), "delete_event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+    g_signal_connect(G_OBJECT(window_grafico_acelaracao), "delete_event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+    g_signal_connect(G_OBJECT(window_grafico_energia), "delete_event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
 
     //vbox1
     GtkWidget *vbox1;
@@ -622,12 +897,6 @@ int main(int argc, char **argv)
     gtk_container_add(GTK_CONTAINER(frame_drawing_area), darea);
 
 //////////////////////// OPCOES ////////////////////
-
-    /* //frame opcoes
-    GtkWidget *frame_opcoes;
-    frame_opcoes = gtk_frame_new("Opções");
-    gtk_frame_set_label_align(GTK_FRAME(frame_opcoes), 0.5, 1.);
-    gtk_container_add(GTK_CONTAINER(window_opcoes), frame_opcoes); */
 
     //box opcoes
     GtkWidget *box_opcoes;
@@ -753,7 +1022,6 @@ int main(int argc, char **argv)
     gtk_box_pack_end(GTK_BOX(box_angulo_velocidade_inicial_particula), scale_angulo_velocidade_inicial_particula, TRUE, TRUE, 0);
     gtk_range_set_value(GTK_RANGE(scale_angulo_velocidade_inicial_particula), particula.angulo_velocidade_inicial);
     g_signal_connect(G_OBJECT(scale_angulo_velocidade_inicial_particula), "value_changed", G_CALLBACK(fc_scale_angulo_velocidade_inicial_particula), NULL);
-
 
     //box intensidade velocidade inicial particula
     GtkWidget *box_intensidade_velocidade_inicial_particula;
@@ -993,21 +1261,21 @@ int main(int argc, char **argv)
     //button parar tempo
     GtkWidget *button_parar_tempo, *button_continuar_tempo;
     button_parar_tempo = gtk_button_new_with_label("Parar");
-    gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_parar_tempo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_parar_tempo, TRUE, TRUE, 5);
     gtk_widget_set_margin_top(button_parar_tempo, 5);
     gtk_widget_set_margin_bottom(button_parar_tempo, 5);
     
     //button reiniciar simulacao
     GtkWidget *button_reiniciar;
     button_reiniciar = gtk_button_new_with_label("Reiniciar");
-    gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_reiniciar, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_reiniciar, TRUE, TRUE, 5);
     gtk_widget_set_margin_top(button_reiniciar, 5);
     gtk_widget_set_margin_bottom(button_reiniciar, 5);
     g_signal_connect(G_OBJECT(button_reiniciar), "pressed", G_CALLBACK(fc_button_reiniciar), NULL);
 
     //button continuar tempo
     button_continuar_tempo = gtk_button_new_with_label("Continuar");
-    gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_continuar_tempo, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(box_controlo_tempo), button_continuar_tempo, TRUE, TRUE, 5);
     gtk_widget_set_margin_top(button_continuar_tempo, 5);
     gtk_widget_set_margin_bottom(button_continuar_tempo, 5);
 
@@ -1058,9 +1326,8 @@ int main(int argc, char **argv)
 
     //ver opcoes
     GtkWidget *ver_opcoes;
-    ver_opcoes = gtk_check_menu_item_new_with_label("Ver menu de opções");
+    ver_opcoes = gtk_menu_item_new_with_label("Ver menu de opções");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_opcoes);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_opcoes), opcoes.ver_opcoes);
     g_signal_connect(G_OBJECT(ver_opcoes), "activate", G_CALLBACK(fc_ver_opcoes), window_opcoes);
 
     //ver referencial
@@ -1136,23 +1403,330 @@ int main(int argc, char **argv)
 
     //abrir grafico posicao
     GtkWidget *abrir_grafico_posicao;
-    abrir_grafico_posicao = gtk_check_menu_item_new_with_label("Abrir gráfico r(t)");
+    abrir_grafico_posicao = gtk_menu_item_new_with_label("Abrir gráfico r(t)");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_abrir_graficos), abrir_grafico_posicao);
+    g_signal_connect(G_OBJECT(abrir_grafico_posicao), "activate", G_CALLBACK(fc_abrir_grafico_posicao), window_grafico_posicao);
 
+        //hbox grafico posicao
+    GtkWidget *hbox_grafico_posicao;
+    hbox_grafico_posicao = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(window_grafico_posicao), hbox_grafico_posicao);
+
+        //drawing area grafico posicao
+    darea_grafico_posicao = gtk_drawing_area_new();
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_posicao), darea_grafico_posicao, TRUE, TRUE, 0);
+
+        //frame grafico posicao opcoes
+    GtkWidget *frame_grafico_posicao_opcoes;
+    frame_grafico_posicao_opcoes = gtk_frame_new("Opcões");
+    gtk_frame_set_label_align(GTK_FRAME(frame_grafico_posicao_opcoes), 0.05, 0.5);
+    gtk_widget_set_margin_start(frame_grafico_posicao_opcoes, 10);
+    gtk_widget_set_margin_end(frame_grafico_posicao_opcoes, 10);
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_posicao), frame_grafico_posicao_opcoes, FALSE, FALSE, 0);
+ 
+        //box grafico posicao opcoes
+    GtkWidget *box_grafico_posicao_opcoes;
+    box_grafico_posicao_opcoes = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_size_request(box_grafico_posicao_opcoes, 200, -1);
+    gtk_container_add(GTK_CONTAINER(frame_grafico_posicao_opcoes), box_grafico_posicao_opcoes);
+
+        //box grafico posicao escala x
+    GtkWidget *box_grafico_posicao_escala_x;
+    box_grafico_posicao_escala_x = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_posicao_opcoes), box_grafico_posicao_escala_x, FALSE, FALSE, 5);
+
+        //label grafico posicao escala x
+    GtkWidget *label_grafico_posicao_escala_x;
+    label_grafico_posicao_escala_x = gtk_label_new("Escala x");
+    gtk_widget_set_margin_start(label_grafico_posicao_escala_x, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_posicao_escala_x), label_grafico_posicao_escala_x, FALSE, FALSE, 0);
+
+        //scale grafico posicao escala x
+    GtkWidget  *scale_grafico_posicao_escala_x;
+    scale_grafico_posicao_escala_x = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_posicao_escala_x), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_posicao_escala_x), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_posicao_escala_x, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_posicao_escala_x), scale_grafico_posicao_escala_x, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_posicao_escala_x), opcoes.grafico_posicao_escala_x);
+    g_signal_connect(G_OBJECT(scale_grafico_posicao_escala_x), "value_changed", G_CALLBACK(fc_scale_grafico_posicao_escala_x), NULL);
+
+        //box grafico posicao escala y
+    GtkWidget *box_grafico_posicao_escala_y;
+    box_grafico_posicao_escala_y = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_posicao_opcoes), box_grafico_posicao_escala_y, FALSE, FALSE, 5);
+
+        //label grafico posicao escala y
+    GtkWidget *label_grafico_posicao_escala_y;
+    label_grafico_posicao_escala_y = gtk_label_new("Escala y");
+    gtk_widget_set_margin_start(label_grafico_posicao_escala_y, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_posicao_escala_y), label_grafico_posicao_escala_y, FALSE, FALSE, 0);
+
+        //scale grafico posicao escala y
+    GtkWidget  *scale_grafico_posicao_escala_y;
+    scale_grafico_posicao_escala_y = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_posicao_escala_y), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_posicao_escala_y), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_posicao_escala_y, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_posicao_escala_y), scale_grafico_posicao_escala_y, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_posicao_escala_y), opcoes.grafico_posicao_escala_y);
+    g_signal_connect(G_OBJECT(scale_grafico_posicao_escala_y), "value_changed", G_CALLBACK(fc_scale_grafico_posicao_escala_y), NULL);
+
+        //check button grafico posicao ver x
+    GtkWidget *check_button_grafico_posicao_ver_x;
+    check_button_grafico_posicao_ver_x = gtk_check_button_new_with_label("Ver gráfico da componente de x");
+    gtk_box_pack_start(GTK_BOX(box_grafico_posicao_opcoes), check_button_grafico_posicao_ver_x, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_posicao_ver_x), opcoes.grafico_posicao_ver_x);
+    g_signal_connect(G_OBJECT(check_button_grafico_posicao_ver_x), "toggled", G_CALLBACK(fc_check_button_grafico_posicao_ver_x), NULL);
+
+        //check button grafico posicao ver y
+    GtkWidget *check_button_grafico_posicao_ver_y;
+    check_button_grafico_posicao_ver_y = gtk_check_button_new_with_label("Ver gráfico da componente de y");
+    gtk_box_pack_start(GTK_BOX(box_grafico_posicao_opcoes), check_button_grafico_posicao_ver_y, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_posicao_ver_y), opcoes.grafico_posicao_ver_y);
+    g_signal_connect(G_OBJECT(check_button_grafico_posicao_ver_y), "toggled", G_CALLBACK(fc_check_button_grafico_posicao_ver_y), NULL);
+    
+    
     //abrir grafico velocidade
     GtkWidget *abrir_grafico_velocidade;
-    abrir_grafico_velocidade = gtk_check_menu_item_new_with_label("Abrir gráfico v(t)");
+    abrir_grafico_velocidade = gtk_menu_item_new_with_label("Abrir gráfico v(t)");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_abrir_graficos), abrir_grafico_velocidade);
+    g_signal_connect(G_OBJECT(abrir_grafico_velocidade), "activate", G_CALLBACK(fc_abrir_grafico_velocidade), window_grafico_velocidade);
+
+    //hbox grafico velocidade
+    GtkWidget *hbox_grafico_velocidade;
+    hbox_grafico_velocidade = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(window_grafico_velocidade), hbox_grafico_velocidade);
+
+        //drawing area grafico velocidade
+    darea_grafico_velocidade = gtk_drawing_area_new();
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_velocidade), darea_grafico_velocidade, TRUE, TRUE, 0);
+
+        //frame grafico velocidade opcoes
+    GtkWidget *frame_grafico_velocidade_opcoes;
+    frame_grafico_velocidade_opcoes = gtk_frame_new("Opcões");
+    gtk_frame_set_label_align(GTK_FRAME(frame_grafico_velocidade_opcoes), 0.05, 0.5);
+    gtk_widget_set_margin_start(frame_grafico_velocidade_opcoes, 10);
+    gtk_widget_set_margin_end(frame_grafico_velocidade_opcoes, 10);
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_velocidade), frame_grafico_velocidade_opcoes, FALSE, FALSE, 0);
+ 
+        //box grafico velocidade opcoes
+    GtkWidget *box_grafico_velocidade_opcoes;
+    box_grafico_velocidade_opcoes = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_size_request(box_grafico_velocidade_opcoes, 200, -1);
+    gtk_container_add(GTK_CONTAINER(frame_grafico_velocidade_opcoes), box_grafico_velocidade_opcoes);
+
+        //box grafico velocidade escala x
+    GtkWidget *box_grafico_velocidade_escala_x;
+    box_grafico_velocidade_escala_x = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_velocidade_opcoes), box_grafico_velocidade_escala_x, FALSE, FALSE, 5);
+
+        //label grafico velocidade escala x
+    GtkWidget *label_grafico_velocidade_escala_x;
+    label_grafico_velocidade_escala_x = gtk_label_new("Escala x");
+    gtk_widget_set_margin_start(label_grafico_velocidade_escala_x, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_velocidade_escala_x), label_grafico_velocidade_escala_x, FALSE, FALSE, 0);
+
+        //scale grafico velocidade escala x
+    GtkWidget  *scale_grafico_velocidade_escala_x;
+    scale_grafico_velocidade_escala_x = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_velocidade_escala_x), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_velocidade_escala_x), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_velocidade_escala_x, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_velocidade_escala_x), scale_grafico_velocidade_escala_x, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_velocidade_escala_x), opcoes.grafico_velocidade_escala_x);
+    g_signal_connect(G_OBJECT(scale_grafico_velocidade_escala_x), "value_changed", G_CALLBACK(fc_scale_grafico_velocidade_escala_x), NULL);
+
+        //box grafico velocidade escala y
+    GtkWidget *box_grafico_velocidade_escala_y;
+    box_grafico_velocidade_escala_y = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_velocidade_opcoes), box_grafico_velocidade_escala_y, FALSE, FALSE, 5);
+
+        //label grafico velocidade escala y
+    GtkWidget *label_grafico_velocidade_escala_y;
+    label_grafico_velocidade_escala_y = gtk_label_new("Escala y");
+    gtk_widget_set_margin_start(label_grafico_velocidade_escala_y, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_velocidade_escala_y), label_grafico_velocidade_escala_y, FALSE, FALSE, 0);
+
+        //scale grafico velocidade escala y
+    GtkWidget  *scale_grafico_velocidade_escala_y;
+    scale_grafico_velocidade_escala_y = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_velocidade_escala_y), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_velocidade_escala_y), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_velocidade_escala_y, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_velocidade_escala_y), scale_grafico_velocidade_escala_y, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_velocidade_escala_y), opcoes.grafico_velocidade_escala_y);
+    g_signal_connect(G_OBJECT(scale_grafico_velocidade_escala_y), "value_changed", G_CALLBACK(fc_scale_grafico_velocidade_escala_y), NULL);
+
+        //check button grafico velocidade ver x
+    GtkWidget *check_button_grafico_velocidade_ver_x;
+    check_button_grafico_velocidade_ver_x = gtk_check_button_new_with_label("Ver gráfico da componente de x");
+    gtk_box_pack_start(GTK_BOX(box_grafico_velocidade_opcoes), check_button_grafico_velocidade_ver_x, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_velocidade_ver_x), opcoes.grafico_velocidade_ver_x);
+    g_signal_connect(G_OBJECT(check_button_grafico_velocidade_ver_x), "toggled", G_CALLBACK(fc_check_button_grafico_velocidade_ver_x), NULL);
+
+        //check button grafico velocidade ver y
+    GtkWidget *check_button_grafico_velocidade_ver_y;
+    check_button_grafico_velocidade_ver_y = gtk_check_button_new_with_label("Ver gráfico da componente de y");
+    gtk_box_pack_start(GTK_BOX(box_grafico_velocidade_opcoes), check_button_grafico_velocidade_ver_y, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_velocidade_ver_y), opcoes.grafico_velocidade_ver_y);
+    g_signal_connect(G_OBJECT(check_button_grafico_velocidade_ver_y), "toggled", G_CALLBACK(fc_check_button_grafico_velocidade_ver_y), NULL);
 
     //abrir grafico acelaracao
     GtkWidget *abrir_grafico_acelaracao;
-    abrir_grafico_acelaracao = gtk_check_menu_item_new_with_label("Abrir gráfico a(t)");
+    abrir_grafico_acelaracao = gtk_menu_item_new_with_label("Abrir gráfico a(t)");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_abrir_graficos), abrir_grafico_acelaracao);
+    g_signal_connect(G_OBJECT(abrir_grafico_acelaracao), "activate", G_CALLBACK(fc_abrir_grafico_acelaracao), window_grafico_acelaracao);
+
+    //hbox grafico acelaracao
+    GtkWidget *hbox_grafico_acelaracao;
+    hbox_grafico_acelaracao = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(window_grafico_acelaracao), hbox_grafico_acelaracao);
+
+        //drawing area grafico acelaracao
+    darea_grafico_acelaracao = gtk_drawing_area_new();
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_acelaracao), darea_grafico_acelaracao, TRUE, TRUE, 0);
+
+        //frame grafico acelaracao opcoes
+    GtkWidget *frame_grafico_acelaracao_opcoes;
+    frame_grafico_acelaracao_opcoes = gtk_frame_new("Opcões");
+    gtk_frame_set_label_align(GTK_FRAME(frame_grafico_acelaracao_opcoes), 0.05, 0.5);
+    gtk_widget_set_margin_start(frame_grafico_acelaracao_opcoes, 10);
+    gtk_widget_set_margin_end(frame_grafico_acelaracao_opcoes, 10);
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_acelaracao), frame_grafico_acelaracao_opcoes, FALSE, FALSE, 0);
+ 
+        //box grafico acelaracao opcoes
+    GtkWidget *box_grafico_acelaracao_opcoes;
+    box_grafico_acelaracao_opcoes = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_size_request(box_grafico_acelaracao_opcoes, 200, -1);
+    gtk_container_add(GTK_CONTAINER(frame_grafico_acelaracao_opcoes), box_grafico_acelaracao_opcoes);
+
+        //box grafico acelaracao escala x
+    GtkWidget *box_grafico_acelaracao_escala_x;
+    box_grafico_acelaracao_escala_x = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_acelaracao_opcoes), box_grafico_acelaracao_escala_x, FALSE, FALSE, 5);
+
+        //label grafico acelaracao escala x
+    GtkWidget *label_grafico_acelaracao_escala_x;
+    label_grafico_acelaracao_escala_x = gtk_label_new("Escala x");
+    gtk_widget_set_margin_start(label_grafico_acelaracao_escala_x, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_acelaracao_escala_x), label_grafico_acelaracao_escala_x, FALSE, FALSE, 0);
+
+        //scale grafico acelaracao escala x
+    GtkWidget  *scale_grafico_acelaracao_escala_x;
+    scale_grafico_acelaracao_escala_x = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_acelaracao_escala_x), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_acelaracao_escala_x), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_acelaracao_escala_x, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_acelaracao_escala_x), scale_grafico_acelaracao_escala_x, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_acelaracao_escala_x), opcoes.grafico_acelaracao_escala_x);
+    g_signal_connect(G_OBJECT(scale_grafico_acelaracao_escala_x), "value_changed", G_CALLBACK(fc_scale_grafico_acelaracao_escala_x), NULL);
+
+        //box grafico acelaracao escala y
+    GtkWidget *box_grafico_acelaracao_escala_y;
+    box_grafico_acelaracao_escala_y = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_acelaracao_opcoes), box_grafico_acelaracao_escala_y, FALSE, FALSE, 5);
+
+        //label grafico acelaracao escala y
+    GtkWidget *label_grafico_acelaracao_escala_y;
+    label_grafico_acelaracao_escala_y = gtk_label_new("Escala y");
+    gtk_widget_set_margin_start(label_grafico_acelaracao_escala_y, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_acelaracao_escala_y), label_grafico_acelaracao_escala_y, FALSE, FALSE, 0);
+
+        //scale grafico acelaracao escala y
+    GtkWidget  *scale_grafico_acelaracao_escala_y;
+    scale_grafico_acelaracao_escala_y = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_acelaracao_escala_y), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_acelaracao_escala_y), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_acelaracao_escala_y, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_acelaracao_escala_y), scale_grafico_acelaracao_escala_y, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_acelaracao_escala_y), opcoes.grafico_acelaracao_escala_y);
+    g_signal_connect(G_OBJECT(scale_grafico_acelaracao_escala_y), "value_changed", G_CALLBACK(fc_scale_grafico_acelaracao_escala_y), NULL);
+
+        //check button grafico acelaracao ver x
+    GtkWidget *check_button_grafico_acelaracao_ver_x;
+    check_button_grafico_acelaracao_ver_x = gtk_check_button_new_with_label("Ver gráfico da componente de x");
+    gtk_box_pack_start(GTK_BOX(box_grafico_acelaracao_opcoes), check_button_grafico_acelaracao_ver_x, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_acelaracao_ver_x), opcoes.grafico_acelaracao_ver_x);
+    g_signal_connect(G_OBJECT(check_button_grafico_acelaracao_ver_x), "toggled", G_CALLBACK(fc_check_button_grafico_acelaracao_ver_x), NULL);
+
+        //check button grafico acelaracao ver y
+    GtkWidget *check_button_grafico_acelaracao_ver_y;
+    check_button_grafico_acelaracao_ver_y = gtk_check_button_new_with_label("Ver gráfico da componente de y");
+    gtk_box_pack_start(GTK_BOX(box_grafico_acelaracao_opcoes), check_button_grafico_acelaracao_ver_y, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_acelaracao_ver_y), opcoes.grafico_acelaracao_ver_y);
+    g_signal_connect(G_OBJECT(check_button_grafico_acelaracao_ver_y), "toggled", G_CALLBACK(fc_check_button_grafico_acelaracao_ver_y), NULL);
 
     //abrir grafico energia
     GtkWidget *abrir_grafico_energia;
-    abrir_grafico_energia = gtk_check_menu_item_new_with_label("Abrir gráfico E(t)");
+    abrir_grafico_energia = gtk_menu_item_new_with_label("Abrir gráfico E(t)");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_abrir_graficos), abrir_grafico_energia);
+    g_signal_connect(G_OBJECT(abrir_grafico_energia), "activate", G_CALLBACK(fc_abrir_grafico_energia), window_grafico_energia);
+
+    //hbox grafico energia
+    GtkWidget *hbox_grafico_energia;
+    hbox_grafico_energia = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(window_grafico_energia), hbox_grafico_energia);
+
+        //drawing area grafico energia
+    darea_grafico_energia = gtk_drawing_area_new();
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_energia), darea_grafico_energia, TRUE, TRUE, 0);
+
+        //frame grafico energia opcoes
+    GtkWidget *frame_grafico_energia_opcoes;
+    frame_grafico_energia_opcoes = gtk_frame_new("Opcões");
+    gtk_frame_set_label_align(GTK_FRAME(frame_grafico_energia_opcoes), 0.05, 0.5);
+    gtk_widget_set_margin_start(frame_grafico_energia_opcoes, 10);
+    gtk_widget_set_margin_end(frame_grafico_energia_opcoes, 10);
+    gtk_box_pack_start(GTK_BOX(hbox_grafico_energia), frame_grafico_energia_opcoes, FALSE, FALSE, 0);
+ 
+        //box grafico energia opcoes
+    GtkWidget *box_grafico_energia_opcoes;
+    box_grafico_energia_opcoes = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_size_request(box_grafico_energia_opcoes, 200, -1);
+    gtk_container_add(GTK_CONTAINER(frame_grafico_energia_opcoes), box_grafico_energia_opcoes);
+
+        //box grafico energia escala x
+    GtkWidget *box_grafico_energia_escala_x;
+    box_grafico_energia_escala_x = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), box_grafico_energia_escala_x, FALSE, FALSE, 5);
+
+        //label grafico energia escala x
+    GtkWidget *label_grafico_energia_escala_x;
+    label_grafico_energia_escala_x = gtk_label_new("Escala x");
+    gtk_widget_set_margin_start(label_grafico_energia_escala_x, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_energia_escala_x), label_grafico_energia_escala_x, FALSE, FALSE, 0);
+
+        //scale grafico energia escala x
+    GtkWidget  *scale_grafico_energia_escala_x;
+    scale_grafico_energia_escala_x = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_energia_escala_x), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_energia_escala_x), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_energia_escala_x, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_energia_escala_x), scale_grafico_energia_escala_x, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_energia_escala_x), opcoes.grafico_energia_escala_x);
+    g_signal_connect(G_OBJECT(scale_grafico_energia_escala_x), "value_changed", G_CALLBACK(fc_scale_grafico_energia_escala_x), NULL);
+
+        //box grafico energia escala y
+    GtkWidget *box_grafico_energia_escala_y;
+    box_grafico_energia_escala_y = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), box_grafico_energia_escala_y, FALSE, FALSE, 5);
+
+        //label grafico energia escala y
+    GtkWidget *label_grafico_energia_escala_y;
+    label_grafico_energia_escala_y = gtk_label_new("Escala y");
+    gtk_widget_set_margin_start(label_grafico_energia_escala_y, 10);
+    gtk_box_pack_start(GTK_BOX(box_grafico_energia_escala_y), label_grafico_energia_escala_y, FALSE, FALSE, 0);
+
+        //scale grafico energia escala y
+    GtkWidget  *scale_grafico_energia_escala_y;
+    scale_grafico_energia_escala_y = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, GRAFICO_ESCALA_MIN, GRAFICO_ESCALA_MAX, 0.01);
+    gtk_scale_set_digits(GTK_SCALE(scale_grafico_energia_escala_y), 2);
+    gtk_scale_set_value_pos(GTK_SCALE(scale_grafico_energia_escala_y), GTK_POS_LEFT);
+    gtk_widget_set_margin_start(scale_grafico_energia_escala_y, 20);
+    gtk_box_pack_end(GTK_BOX(box_grafico_energia_escala_y), scale_grafico_energia_escala_y, TRUE, TRUE, 0);
+    gtk_range_set_value(GTK_RANGE(scale_grafico_energia_escala_y), opcoes.grafico_energia_escala_y);
+    g_signal_connect(G_OBJECT(scale_grafico_energia_escala_y), "value_changed", G_CALLBACK(fc_scale_grafico_energia_escala_y), NULL);
 
 //////////////////////// TEMA ////////////////////
 
@@ -1194,9 +1768,17 @@ int main(int argc, char **argv)
 //////////////////////// FIM ////////////////////
 
     g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_draw_event), darea);
+    g_signal_connect(G_OBJECT(darea_grafico_posicao), "draw", G_CALLBACK(on_draw_event_grafico_posicao), darea);
+    g_signal_connect(G_OBJECT(darea_grafico_velocidade), "draw", G_CALLBACK(on_draw_event_grafico_velocidade), darea);
+    g_signal_connect(G_OBJECT(darea_grafico_acelaracao), "draw", G_CALLBACK(on_draw_event_grafico_acelaracao), darea);
+    g_signal_connect(G_OBJECT(darea_grafico_energia), "draw", G_CALLBACK(on_draw_event_grafico_energia), darea);
     
     //ciclo timeout
     g_timeout_add (30, (GSourceFunc) time_handler, darea);
+    g_timeout_add (30, (GSourceFunc) time_handler, darea_grafico_posicao);
+    g_timeout_add (30, (GSourceFunc) time_handler, darea_grafico_velocidade);
+    g_timeout_add (30, (GSourceFunc) time_handler, darea_grafico_acelaracao);
+    g_timeout_add (30, (GSourceFunc) time_handler, darea_grafico_energia);
     
     //gtk main
     gtk_widget_show_all(window);
