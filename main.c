@@ -36,11 +36,12 @@ ERROS
 
 #define MAX_X 800
 #define MAX_Y 800
-#define MAX_VEL 5000
+#define MAX_VEL 3000
 #define MAX_CARGA 100
 #define MAX_MASSA 100
-#define MAX_INTENSIDADE_CAMPO_MAGNETICO 100
-#define MAX_INTENSIDADE_CAMPO_ELETRICO 10000
+#define MIN_MASSA 0.1
+#define MAX_INTENSIDADE_CAMPO_MAGNETICO 5
+#define MAX_INTENSIDADE_CAMPO_ELETRICO 800
 
 #define GRAFICO_ESCALA_MIN 0.01
 #define GRAFICO_ESCALA_MAX 10
@@ -146,6 +147,7 @@ typedef struct estrutura_particula
     vetor r, r0, v, a, F;
     double carga, massa;
     double angulo_velocidade_inicial, intensidade_velocidade_inicial;
+    double energia_potencial_eletrico, energia_potencial_magnetico, energia_cinetica;
 }estrutura_particula;
 
 typedef struct estrutura_campo_magnetico
@@ -183,6 +185,9 @@ typedef struct estrutura_opcoes
             grafico_velocidade_ver_y,
             grafico_acelaracao_ver_x,
             grafico_acelaracao_ver_y,
+            grafico_energia_ver_cinetica,
+            grafico_energia_ver_potencial_eletrico,
+            grafico_energia_ver_potencial_magnetico,
             ver_referencial, 
             ver_forca,
             ver_acelaracao,
@@ -244,6 +249,9 @@ estrutura_particula criar_particula(vetor r0, double angulo_velocidade_inicial, 
     particula.v = vetor_escalar(intensidade_velocidade_inicial, particula.v);
     particula.a = vetor_criar(0, 0, 0);
     particula.F = vetor_criar(0, 0, 0);
+    particula.energia_cinetica = 0;
+    particula.energia_potencial_eletrico = 0;
+    particula.energia_potencial_magnetico = 0;
     
     return particula;
 }
@@ -287,6 +295,9 @@ estrutura_opcoes criar_opcoes(double escala,
                             gboolean grafico_velocidade_ver_y,
                             gboolean grafico_acelaracao_ver_x,
                             gboolean grafico_acelaracao_ver_y,
+                            gboolean grafico_energia_ver_cinetica,
+                            gboolean grafico_energia_ver_potencial_eletrico,
+                            gboolean grafico_energia_ver_potencial_magnetico,
                             gboolean ver_referencial, 
                             gboolean ver_forca,
                             gboolean ver_acelaracao,
@@ -314,6 +325,9 @@ estrutura_opcoes criar_opcoes(double escala,
     opcoes.grafico_acelaracao_escala_y = grafico_acelaracao_escala_y;
     opcoes.grafico_energia_escala_x = grafico_energia_escala_x;
     opcoes.grafico_energia_escala_y = grafico_energia_escala_y;
+    opcoes.grafico_energia_ver_cinetica = grafico_energia_ver_cinetica;
+    opcoes.grafico_energia_ver_potencial_eletrico = grafico_energia_ver_potencial_eletrico;
+    opcoes.grafico_energia_ver_potencial_magnetico = grafico_energia_ver_potencial_magnetico;
     opcoes.ver_opcoes = ver_opcoes;
 
     opcoes.grafico_posicao_ver_x = grafico_posicao_ver_x;
@@ -578,6 +592,24 @@ gboolean fc_scale_grafico_energia_escala_y(GtkWidget *w)
     return FALSE;
 }
 
+gboolean fc_check_button_grafico_energia_ver_potencial_eletrico(GtkWidget *w)
+{
+    opcoes.grafico_energia_ver_potencial_eletrico = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_energia_ver_potencial_magnetico(GtkWidget *w)
+{
+    opcoes.grafico_energia_ver_potencial_magnetico = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_check_button_grafico_energia_ver_cinetica(GtkWidget *w)
+{
+    opcoes.grafico_energia_ver_cinetica = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
 gboolean fc_ver_referencial(GtkWidget *w)
 {
     opcoes.ver_referencial =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
@@ -600,7 +632,7 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     if ( fwrite(&particula, sizeof(estrutura_particula), 1, data) != 1 )
         printf("    ERR - erro ao tentar escrever no fim do ficheiro\n");
 
-    static gint darea_width = 0, darea_height = 0;
+    static gdouble darea_width = 0, darea_height = 0;
     darea_width = gtk_widget_get_allocated_width(darea);
     darea_height = gtk_widget_get_allocated_height(darea);   
     double temp;
@@ -651,7 +683,7 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     }
     
     //desenhar a particula
-    cairo_set_source_rgb(cr, 0., 0.5, 2.5);
+    cairo_set_source_rgb(cr, 0., 0.5, 1.);
     cairo_set_line_width (cr, 4.0);
     cairo_arc (cr, particula.r.x, particula.r.y, 10, 0., 2 * M_PI);
     cairo_fill (cr);
@@ -699,6 +731,15 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     
     particula.r = vetor_somar(particula.r, vetor_escalar(dt, particula.v));
 
+    //update energia cinetica
+    particula.energia_cinetica = 0.5 * particula.massa * QUADRADO(vetor_norma(particula.v));
+
+    //update energia potencial eletrico
+    particula.energia_potencial_eletrico = particula.carga * vetor_norma(campo_eletrico.E) * vetor_distancia(particula.r, campo_eletrico.origem);
+
+    //update energia potencial magnetico
+    particula.energia_potencial_magnetico = 10000 * vetor_norma(campo_magnetico.B); 
+
     return FALSE;
 }
 
@@ -706,7 +747,7 @@ gboolean on_draw_event_grafico_posicao(GtkWidget *darea, cairo_t *cr)
 {
     if (gtk_widget_get_visible(darea))
     {
-        static gint darea_width = 0, darea_height = 0, mult_width = 0, mult_height = 0;
+        static gdouble darea_width = 0, darea_height = 0, mult_width = 0, mult_height = 0;
         darea_width = gtk_widget_get_allocated_width(darea);
         darea_height = gtk_widget_get_allocated_height(darea);
         mult_width = darea_width / NUM_ELEMENTOS_TRAJETORIA;
@@ -786,22 +827,285 @@ gboolean on_draw_event_grafico_posicao(GtkWidget *darea, cairo_t *cr)
 
 gboolean on_draw_event_grafico_velocidade(GtkWidget *darea, cairo_t *cr)
 {
-    ;
+    if (gtk_widget_get_visible(darea))
+    {
+        static gdouble darea_width = 0, darea_height = 0, mult_width = 0, mult_height = 0;
+        darea_width = gtk_widget_get_allocated_width(darea);
+        darea_height = gtk_widget_get_allocated_height(darea);
+        mult_width = darea_width / NUM_ELEMENTOS_TRAJETORIA;
+        mult_height = 0.2;
+
+        //transformar o plano tal que a origem esteja no centro da darea à direita e que os vetores ex e ey sejam os convencionados
+        cairo_matrix_t matrix;
+        cairo_matrix_init(&matrix, 1, 0, 0, -1, 0, darea_height/2);
+        cairo_transform(cr, &matrix);
+
+        //desenhar eixos
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_move_to (cr, 0.0, 0.0);
+        cairo_line_to (cr, darea_width, 0.0);
+        cairo_move_to (cr, 0.0, -darea_height/2);
+        cairo_line_to (cr, 0.0, darea_height/2);
+        cairo_stroke (cr);
+
+        //escalar eixos
+        cairo_scale(cr, opcoes.grafico_velocidade_escala_x, opcoes.grafico_velocidade_escala_y);
+
+        //desenhar grafico x
+        if (opcoes.grafico_velocidade_ver_x)
+        {
+            cairo_set_source_rgba(cr, 1., 0., 0., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.v.x);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.v.x);
+                }
+            }
+            cairo_stroke (cr);
+        }
+
+        //desenhar grafico y
+        if (opcoes.grafico_velocidade_ver_y)
+        {
+            cairo_set_source_rgba(cr, 0., 0., 1., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.v.y);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.v.y);
+                }
+            }
+            cairo_stroke (cr);
+        }
+    }
 }
 
 gboolean on_draw_event_grafico_acelaracao(GtkWidget *darea, cairo_t *cr)
 {
-    ;
+    if (gtk_widget_get_visible(darea))
+    {
+        static gdouble darea_width = 0, darea_height = 0, mult_width = 0, mult_height = 0;
+        darea_width = gtk_widget_get_allocated_width(darea);
+        darea_height = gtk_widget_get_allocated_height(darea);
+        mult_width = darea_width / NUM_ELEMENTOS_TRAJETORIA;
+        mult_height = 0.008;
+
+        //transformar o plano tal que a origem esteja no centro da darea à direita e que os vetores ex e ey sejam os convencionados
+        cairo_matrix_t matrix;
+        cairo_matrix_init(&matrix, 1, 0, 0, -1, 0, darea_height/2);
+        cairo_transform(cr, &matrix);
+
+        //desenhar eixos
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_move_to (cr, 0.0, 0.0);
+        cairo_line_to (cr, darea_width, 0.0);
+        cairo_move_to (cr, 0.0, -darea_height/2);
+        cairo_line_to (cr, 0.0, darea_height/2);
+        cairo_stroke (cr);
+
+        //escalar eixos
+        cairo_scale(cr, opcoes.grafico_acelaracao_escala_x, opcoes.grafico_acelaracao_escala_y);
+
+        //desenhar grafico x
+        if (opcoes.grafico_acelaracao_ver_x)
+        {
+            cairo_set_source_rgba(cr, 1., 0., 0., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.a.x);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.a.x);
+                }
+            }
+            cairo_stroke (cr);
+        }
+
+        //desenhar grafico y
+        if (opcoes.grafico_acelaracao_ver_y)
+        {
+            cairo_set_source_rgba(cr, 0., 0., 1., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.a.y);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height*trajetoria.a.y);
+                }
+            }
+            cairo_stroke (cr);
+        }
+    }
 }
 
 gboolean on_draw_event_grafico_energia(GtkWidget *darea, cairo_t *cr)
 {
-    ;
+   if (gtk_widget_get_visible(darea))
+    {
+        static gdouble darea_width = 0, darea_height = 0, mult_width = 0, 
+        mult_height_cinetica = 0, mult_height_potencial_eletrico = 0, mult_height_potencial_magnetico = 0;
+        darea_width = gtk_widget_get_allocated_width(darea);
+        darea_height = gtk_widget_get_allocated_height(darea);
+        mult_width = darea_width / NUM_ELEMENTOS_TRAJETORIA;
+        mult_height_cinetica = 0.0001;
+        mult_height_potencial_eletrico = 0.00005;
+        mult_height_potencial_magnetico = 0.005;
+
+        //transformar o plano tal que a origem esteja no centro da darea à direita e que os vetores ex e ey sejam os convencionados
+        cairo_matrix_t matrix;
+        cairo_matrix_init(&matrix, 1, 0, 0, -1, 0, darea_height/2);
+        cairo_transform(cr, &matrix);
+
+        //desenhar eixos
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_move_to (cr, 0.0, 0.0);
+        cairo_line_to (cr, darea_width, 0.0);
+        cairo_move_to (cr, 0.0, -darea_height/2);
+        cairo_line_to (cr, 0.0, darea_height/2);
+        cairo_stroke (cr);
+
+        //escalar eixos
+        cairo_scale(cr, opcoes.grafico_energia_escala_x, opcoes.grafico_energia_escala_y);
+
+        //desenhar grafico energia cinetica
+        if (opcoes.grafico_energia_ver_cinetica)
+        {
+            cairo_set_source_rgba(cr, 1., 0., 0., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height_cinetica*trajetoria.energia_cinetica);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height_cinetica*trajetoria.energia_cinetica);
+                }
+            }
+            cairo_stroke (cr);
+        }
+
+        //desenhar grafico energia potencial eletrico
+        if (opcoes.grafico_energia_ver_potencial_eletrico)
+        {
+            cairo_set_source_rgba(cr, 0., 1., 0., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height_potencial_eletrico*trajetoria.energia_potencial_eletrico);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height_potencial_eletrico*trajetoria.energia_potencial_eletrico);
+                }
+            }
+            cairo_stroke (cr);
+        }
+
+        //desenhar grafico energia potencial magnetico
+        if (opcoes.grafico_energia_ver_potencial_magnetico)
+        {
+            cairo_set_source_rgba(cr, 0., 0., 1., 1);
+            cairo_set_line_width (cr, 2.0);
+            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
+            {   
+                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height_potencial_magnetico*trajetoria.energia_potencial_magnetico);
+                }
+            }
+            else
+            {
+                fseek(data, 0, SEEK_SET);
+                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
+
+                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
+                {
+                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
+                        cairo_line_to(cr, mult_width*i, mult_height_potencial_magnetico*trajetoria.energia_potencial_magnetico);
+                }
+            }
+            cairo_stroke (cr);
+        }
+
+        
+    }
 }
 
 gboolean time_handler (GtkWidget *widget)
 {
-    if ((!GTK_IS_WIDGET(widget)) /* || (!gtk_widget_get_window (widget)) */)
+    if ((!GTK_IS_WIDGET(widget)))
         return FALSE;
 
     gtk_widget_queue_draw(widget);
@@ -827,7 +1131,9 @@ int main(int argc, char **argv)
     particula = criar_particula(vetor_criar(100,50,0), 3*M_PI_2, 100, -10, 1);
     campo_magnetico = criar_campo_magnetico(1, 0);
     campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 50);
-    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
+    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
+
+    gtk_window_set_default_icon_from_file("assets/icon.png", NULL);
 
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -1074,7 +1380,7 @@ int main(int argc, char **argv)
 
     //spin_button massa particula
     GtkWidget  *spin_button_massa_particula;
-    spin_button_massa_particula = gtk_spin_button_new_with_range(0, MAX_MASSA, 0.01);
+    spin_button_massa_particula = gtk_spin_button_new_with_range(MIN_MASSA, MAX_MASSA, 0.01);
     gtk_box_pack_end(GTK_BOX(box_massa_particula), spin_button_massa_particula, FALSE, FALSE, 0);
     gtk_widget_set_margin_end(spin_button_massa_particula, 20);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_button_massa_particula), particula.massa);
@@ -1663,7 +1969,7 @@ int main(int argc, char **argv)
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_abrir_graficos), abrir_grafico_energia);
     g_signal_connect(G_OBJECT(abrir_grafico_energia), "activate", G_CALLBACK(fc_abrir_grafico_energia), window_grafico_energia);
 
-    //hbox grafico energia
+        //hbox grafico energia
     GtkWidget *hbox_grafico_energia;
     hbox_grafico_energia = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_container_add(GTK_CONTAINER(window_grafico_energia), hbox_grafico_energia);
@@ -1727,6 +2033,27 @@ int main(int argc, char **argv)
     gtk_box_pack_end(GTK_BOX(box_grafico_energia_escala_y), scale_grafico_energia_escala_y, TRUE, TRUE, 0);
     gtk_range_set_value(GTK_RANGE(scale_grafico_energia_escala_y), opcoes.grafico_energia_escala_y);
     g_signal_connect(G_OBJECT(scale_grafico_energia_escala_y), "value_changed", G_CALLBACK(fc_scale_grafico_energia_escala_y), NULL);
+
+        //check button grafico eneriga ver potencial eletrico
+    GtkWidget *check_button_grafico_energia_ver_potencial_eletrico;
+    check_button_grafico_energia_ver_potencial_eletrico = gtk_check_button_new_with_label("Ver gráfico da energia potencial eletrica");
+    gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), check_button_grafico_energia_ver_potencial_eletrico, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_energia_ver_potencial_eletrico), opcoes.grafico_energia_ver_potencial_eletrico);
+    g_signal_connect(G_OBJECT(check_button_grafico_energia_ver_potencial_eletrico), "toggled", G_CALLBACK(fc_check_button_grafico_energia_ver_potencial_eletrico), NULL);
+
+        //check button grafico eneriga ver potencial magnetico
+    GtkWidget *check_button_grafico_energia_ver_potencial_magnetico;
+    check_button_grafico_energia_ver_potencial_magnetico = gtk_check_button_new_with_label("Ver gráfico da energia potencial magnetica");
+    gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), check_button_grafico_energia_ver_potencial_magnetico, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_energia_ver_potencial_magnetico), opcoes.grafico_energia_ver_potencial_magnetico);
+    g_signal_connect(G_OBJECT(check_button_grafico_energia_ver_potencial_magnetico), "toggled", G_CALLBACK(fc_check_button_grafico_energia_ver_potencial_magnetico), NULL);
+
+        //check button grafico eneriga ver cinetica
+    GtkWidget *check_button_grafico_energia_ver_cinetica;
+    check_button_grafico_energia_ver_cinetica = gtk_check_button_new_with_label("Ver gráfico da energia cinetica");
+    gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), check_button_grafico_energia_ver_cinetica, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_energia_ver_cinetica), opcoes.grafico_energia_ver_cinetica);
+    g_signal_connect(G_OBJECT(check_button_grafico_energia_ver_cinetica), "toggled", G_CALLBACK(fc_check_button_grafico_energia_ver_cinetica), NULL);
 
 //////////////////////// TEMA ////////////////////
 
