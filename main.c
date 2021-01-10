@@ -2,10 +2,7 @@
 QUESTOES PARA O PROF
     O QUE DEVEMOS FAZER QUANDO O DENOMINADOR É ZERO?
         o que estamos a fazer de momento é dizer que 1/0 = DBL_MAX ou INF
-       
-    nos spin buttons o valor so é atualizado quando clicamos nos butoes de lado, dar enter nao funciona por exemplo
-        QUAL SERA O EVENT?
-    
+
     a particula as vezes consegue fugir da darea - O QUE PODEMOS FAZER?
         tentei limitar a velocidade mas nao parece resultar
             devemos fazer isso?
@@ -15,14 +12,12 @@ QUESTOES PARA O PROF
 /*****************************************************************************************************************************************************
 TODO
     criar temas
-    dar funcoes aos itens do menu
 *****************************************************************************************************************************************************/
 
 
 /*****************************************************************************************************************************************************
 ERROS
     a particula as vezes consegue fugir da darea
-    nos spin buttons o valor so é atualizado quando clicamos nos butoes de lado, dar enter nao funciona por exemplo
 *****************************************************************************************************************************************************/
 
 
@@ -43,6 +38,8 @@ ERROS
 #define MAX_INTENSIDADE_CAMPO_MAGNETICO 5
 #define MAX_INTENSIDADE_CAMPO_ELETRICO 800
 
+#define BARREIRA 10
+
 #define GRAFICO_ESCALA_MIN 0.01
 #define GRAFICO_ESCALA_MAX 10
 
@@ -51,7 +48,7 @@ ERROS
 #define DT_NORMAL 10e-3
 
 #define K_E 10e3
-#define INF 10e10
+#define INF 10e9
 
 gdouble dt = 0;
 
@@ -138,6 +135,11 @@ double vetor_distancia(vetor v1, vetor v2)
     return vetor_norma(v3);
 }
 
+double vetor_angulo_com_eixo_x(vetor v)
+{
+    return ( v.x>0 ? atan(v.y/v.x) : M_PI + atan(v.y/v.x));
+}
+
 //////////////////////////////////////////// FUNCTIONS ////////////////////////////////////////////
 
 //////////////////////// functions.h ////////////////////
@@ -190,10 +192,7 @@ typedef struct estrutura_opcoes
             grafico_energia_ver_potencial_magnetico,
             ver_referencial, 
             ver_forca,
-            ver_acelaracao,
             ver_velocidade,
-            ver_posicao,
-            ver_posicao_inicial,
             ver_campo_eletrico,
             ver_campo_magnetico,
             ver_trajetoria,
@@ -208,21 +207,31 @@ typedef struct estrutura_opcoes
 
 //////////////////////// functions.c ////////////////////
 
+vetor get_window_size(void)
+{
+    GdkDisplay   *display;
+    GdkMonitor   *monitor;
+    GdkRectangle  geom;
+
+    display = gdk_display_get_default ();
+    monitor = gdk_display_get_primary_monitor (display);
+    gdk_monitor_get_geometry (monitor, &geom);
+
+    return vetor_criar(geom.width, geom.height, 0);
+}
+
 void provider_create_from_file(gchar *file_name)
 {
-  GtkCssProvider *provider ;
-  GdkDisplay     *display  ;
-  GdkScreen      *screen   ;
+    GtkCssProvider *provider ;
+    GdkDisplay     *display  ;
+    GdkScreen      *screen   ;
 
-  provider = gtk_css_provider_new ();
-  display = gdk_display_get_default ();
-  screen = gdk_display_get_default_screen (display);
-
-  gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER (provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-
-  gtk_css_provider_load_from_path (provider, file_name, NULL);
-
-  g_object_unref (provider);
+    provider = gtk_css_provider_new ();
+    display = gdk_display_get_default ();
+    screen = gdk_display_get_default_screen (display);
+    gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER (provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+    gtk_css_provider_load_from_path (provider, file_name, NULL);    
+    g_object_unref (provider);
 }
 
 gboolean fechar_programa()
@@ -233,7 +242,40 @@ gboolean fechar_programa()
     gtk_main_quit();
     printf("Gtk foi encerrado com sucesso.\n");
     return FALSE;
-} 
+}
+
+void arrow_to(cairo_t *cr, double x, double y, double angulo, double comprimento)
+{
+    static double alpha = M_PI / 12; //angulo entre a reta em si e cada um das retas da seta (?)
+    static double mult = 0.2; //tamanho relatico das retas da seta
+
+    cairo_move_to(cr, x, y); //origem do vetor
+
+    double delta_x = cos(angulo) * comprimento;
+    double delta_y = sin(angulo) * comprimento;
+    double original_delta_x = delta_x;
+    double original_delta_y = delta_y;
+
+    cairo_rel_line_to(cr, delta_x, delta_y);
+    cairo_stroke(cr);
+
+    cairo_move_to(cr, x + original_delta_x, y + original_delta_y);
+    delta_x = cos(M_PI + angulo + alpha) * mult * comprimento;
+    delta_y = sin(M_PI + angulo + alpha) * mult * comprimento;
+    cairo_rel_line_to(cr, delta_x, delta_y);
+
+    cairo_move_to(cr, x + original_delta_x, y + original_delta_y);
+    delta_x = cos(M_PI + angulo - alpha) * mult * comprimento;
+    delta_y = sin(M_PI + angulo - alpha) * mult * comprimento;
+    cairo_rel_line_to(cr, delta_x, delta_y);
+
+    cairo_stroke(cr);
+}
+
+double normalizar_norma(double x, double max, double mult)
+{
+    return max * (exp(mult*x/max) - 1) / (exp(mult*x/max) + 1);
+}
 
 estrutura_particula criar_particula(vetor r0, double angulo_velocidade_inicial, double intensidade_velocidade_inicial, double carga, double massa)
 {
@@ -300,10 +342,7 @@ estrutura_opcoes criar_opcoes(double escala,
                             gboolean grafico_energia_ver_potencial_magnetico,
                             gboolean ver_referencial, 
                             gboolean ver_forca,
-                            gboolean ver_acelaracao,
                             gboolean ver_velocidade,
-                            gboolean ver_posicao,
-                            gboolean ver_posicao_inicial,
                             gboolean ver_campo_eletrico,
                             gboolean ver_campo_magnetico,
                             gboolean ver_trajetoria,
@@ -339,10 +378,7 @@ estrutura_opcoes criar_opcoes(double escala,
 
     opcoes.ver_referencial = ver_referencial;
     opcoes.ver_forca = ver_forca;
-    opcoes.ver_acelaracao = ver_acelaracao;
     opcoes.ver_velocidade = ver_velocidade;
-    opcoes.ver_posicao = ver_posicao;
-    opcoes.ver_posicao_inicial = ver_posicao_inicial;
     opcoes.ver_campo_eletrico = ver_campo_eletrico;
     opcoes.ver_campo_magnetico = ver_campo_magnetico;
     opcoes.ver_trajetoria = ver_trajetoria;
@@ -616,6 +652,30 @@ gboolean fc_ver_referencial(GtkWidget *w)
     return FALSE;
 }
 
+gboolean fc_ver_forca(GtkWidget *w)
+{
+    opcoes.ver_forca =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
+    return FALSE;
+}
+
+gboolean fc_ver_velocidade(GtkWidget *w)
+{
+    opcoes.ver_velocidade =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
+    return FALSE;
+}
+
+gboolean fc_ver_campo_magnetico(GtkWidget *w)
+{
+    opcoes.ver_campo_magnetico =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
+    return FALSE;
+}
+
+gboolean fc_ver_campo_eletrico(GtkWidget *w)
+{
+    opcoes.ver_campo_eletrico =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
+    return FALSE;
+}
+
 gboolean fc_ver_trajetoria(GtkWidget *w)
 {
     opcoes.ver_trajetoria =  gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(w));
@@ -681,10 +741,27 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
         }
         cairo_stroke (cr);
     }
+
+    if(opcoes.ver_velocidade)
+    {
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_set_line_width(cr, 1.5);
+        arrow_to(cr, particula.r.x, particula.r.y, 
+                vetor_angulo_com_eixo_x(particula.v), 
+                normalizar_norma(vetor_norma(particula.v), 100, 0.5));
+    }
+
+    if(opcoes.ver_forca)
+    {
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_set_line_width(cr, 1.5);
+        arrow_to(cr, particula.r.x, particula.r.y, 
+                vetor_angulo_com_eixo_x(particula.F), 
+                normalizar_norma(vetor_norma(particula.F), 100, 0.5));
+    }
     
     //desenhar a particula
     cairo_set_source_rgb(cr, 0., 0.5, 1.);
-    cairo_set_line_width (cr, 4.0);
     cairo_arc (cr, particula.r.x, particula.r.y, 10, 0., 2 * M_PI);
     cairo_fill (cr);
 
@@ -692,7 +769,11 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     campo_magnetico.B = vetor_criar(0, 0, campo_magnetico.sentido * campo_magnetico.intensidade);
 
     //update campo eletrico
-    if (campo_eletrico.e_uniforme)
+    if (fabs(campo_eletrico.intensidade) < 0.01)
+    {
+        campo_eletrico.E = vetor_criar(0, 0, 0);
+    }
+    else if (campo_eletrico.e_uniforme)
     {
         campo_eletrico.E = vetor_criar(cos(campo_eletrico.angulo) * campo_eletrico.intensidade, 
                                        sin(campo_eletrico.angulo) * campo_eletrico.intensidade, 
@@ -717,6 +798,7 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
         particula.a = vetor_escalar(INF, particula.F); 
     
 
+    //colisao elastica com a parede
     if(particula.r.x < -darea_width/2 /opcoes.escala || particula.r.x > darea_width/2 /opcoes.escala)
         particula.v.x *= -1;
     
@@ -1126,49 +1208,49 @@ int main(int argc, char **argv)
     gtk_init(&argc, &argv);
 
     provider_create_from_file ("themes/dark.css");
+    vetor tamanho_tela = get_window_size();
 
     //iniciar
     particula = criar_particula(vetor_criar(100,50,0), 3*M_PI_2, 100, -10, 1);
     campo_magnetico = criar_campo_magnetico(1, 0);
     campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 50);
-    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
+    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
 
     gtk_window_set_default_icon_from_file("assets/icon.png", NULL);
 
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Força de Lorentz");
-    gtk_window_set_default_size(GTK_WINDOW(window), 1080,  800);
+    gtk_window_set_default_size(GTK_WINDOW(window), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
     //criar janela opcoes
     window_opcoes = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window_opcoes), "Força de Lorentz - Opções");
-    gtk_window_set_default_size(GTK_WINDOW(window_opcoes), 400,  400);
     gtk_window_set_position(GTK_WINDOW(window_opcoes), GTK_WIN_POS_CENTER);
 
     //criar janela grafico posicao
     window_grafico_posicao = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window_grafico_posicao), "Força de Lorentz - Gráfico Posicao");
-    gtk_window_set_default_size(GTK_WINDOW(window_grafico_posicao), 800,  600);
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_posicao), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_posicao), GTK_WIN_POS_CENTER);
 
     //criar janela grafico velocidade
     window_grafico_velocidade = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window_grafico_velocidade), "Força de Lorentz - Gráfico Velocidade");
-    gtk_window_set_default_size(GTK_WINDOW(window_grafico_velocidade), 800,  600);
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_velocidade), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_velocidade), GTK_WIN_POS_CENTER);
 
     //criar janela grafico acelaracao
     window_grafico_acelaracao = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window_grafico_acelaracao), "Força de Lorentz - Gráfico Acelaracao");
-    gtk_window_set_default_size(GTK_WINDOW(window_grafico_acelaracao), 800,  600);
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_acelaracao), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_acelaracao), GTK_WIN_POS_CENTER);
 
     //criar janela grafico energia
     window_grafico_energia = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window_grafico_energia), "Força de Lorentz - Gráfico Energia");
-    gtk_window_set_default_size(GTK_WINDOW(window_grafico_energia), 800,  600);
+    gtk_window_set_default_size(GTK_WINDOW(window_grafico_energia), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_energia), GTK_WIN_POS_CENTER);
 
     //conectar botao de fecho
@@ -1648,42 +1730,30 @@ int main(int argc, char **argv)
     ver_forca = gtk_check_menu_item_new_with_label("Ver vetor força");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_forca);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_forca), opcoes.ver_forca);
+    g_signal_connect(G_OBJECT(ver_forca), "activate", G_CALLBACK(fc_ver_forca), NULL);
 
-    //ver a
-    GtkWidget *ver_acelaracao;
-    ver_acelaracao = gtk_check_menu_item_new_with_label("Ver vetor acelaração");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_acelaracao);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_acelaracao), opcoes.ver_acelaracao);
 
     //ver v
     GtkWidget *ver_velocidade;
     ver_velocidade = gtk_check_menu_item_new_with_label("Ver vetor velocidade");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_velocidade);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_velocidade), opcoes.ver_velocidade);
+    g_signal_connect(G_OBJECT(ver_velocidade), "activate", G_CALLBACK(fc_ver_velocidade), NULL);
 
-    //ver r
-    GtkWidget *ver_posicao;
-    ver_posicao = gtk_check_menu_item_new_with_label("Ver vetor posição");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_posicao);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_posicao), opcoes.ver_posicao);
-
-    //ver r0
-    GtkWidget *ver_posicao_inicial;
-    ver_posicao_inicial = gtk_check_menu_item_new_with_label("Ver vetor posição inicial");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_posicao_inicial);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_posicao_inicial), opcoes.ver_posicao_inicial);
 
     //ver B
     GtkWidget *ver_campo_magnetico;
     ver_campo_magnetico = gtk_check_menu_item_new_with_label("Ver vetor campo magnético");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_campo_magnetico);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_campo_magnetico), opcoes.ver_campo_magnetico);
+    g_signal_connect(G_OBJECT(ver_campo_magnetico), "activate", G_CALLBACK(fc_ver_campo_magnetico), NULL);
 
     //ver E
     GtkWidget *ver_campo_eletrico;
     ver_campo_eletrico = gtk_check_menu_item_new_with_label("Ver vetor campo elétrico");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_visualizacao), ver_campo_eletrico);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(ver_campo_eletrico), opcoes.ver_campo_eletrico);
+    g_signal_connect(G_OBJECT(ver_campo_eletrico), "activate", G_CALLBACK(fc_ver_campo_eletrico), NULL);
 
     //separador
     GtkWidget *separador1;
