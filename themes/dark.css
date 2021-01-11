@@ -1,11 +1,36 @@
-/* border{
+/* 
+xiketic: #03071e
+dark-sienna: #370617
+rosewood: #6a040f
+dark-red: #9d0208
+rosso-corsa: #d00000
+vermilion: #dc2f02
+persimmon: #e85d04
+carrot-orange: #f48c06
+orange-web: #faa307
+selective-yellow: #ffba08
+
+border{
     border-color: #525252;
     border-radius: 5px;
-} */
+}
+ */
 
-label{
-    color: #ca3e47;
-    font-weight: bolder;
+ label{
+    color: #9d0208;
+    font-size: 16px;
+    font-weight: normal;
 }
 
 
+.title1 label{
+    color: #6a040f;
+    font-weight: bolder;
+    font-size: 18px;
+}
+
+.text1 label{
+    color: #9d0208;
+    font-size: 16px;
+    font-weight: normal;
+}

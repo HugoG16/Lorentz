@@ -20,6 +20,15 @@ ERROS
     a particula as vezes consegue fugir da darea
 *****************************************************************************************************************************************************/
 
+/*****************************************************************************************************************************************************
+REFERENCIAS
+    https://developer.gnome.org/gtk3/stable/chap-css-overview.html CSS
+    https://developer.gnome.org/gtk3/stable/ GTK+
+    https://label2.tecnico.ulisboa.pt/IC/ C E GTK+
+    https://coolors.co/d8f3dc-b7e4c7-95d5b2-74c69d-52b788-40916c-2d6a4f-1b4332-081c15
+    https://coolors.co/03071e-370617-6a040f-9d0208-d00000-dc2f02-e85d04-f48c06-faa307-ffba08
+*****************************************************************************************************************************************************/
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,6 +58,8 @@ ERROS
 
 #define K_E 10e3
 #define INF 10e9
+
+#define ADICIONAR_CLASS(VARIAVEL, CLASS) gtk_style_context_add_class( gtk_widget_get_style_context(VARIAVEL), CLASS)
 
 gdouble dt = 0;
 
@@ -742,6 +753,7 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
         cairo_stroke (cr);
     }
 
+    //vetor velocidade
     if(opcoes.ver_velocidade)
     {
         cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
@@ -751,6 +763,7 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
                 normalizar_norma(vetor_norma(particula.v), 100, 0.5));
     }
 
+    //vetor forca
     if(opcoes.ver_forca)
     {
         cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
@@ -758,6 +771,53 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
         arrow_to(cr, particula.r.x, particula.r.y, 
                 vetor_angulo_com_eixo_x(particula.F), 
                 normalizar_norma(vetor_norma(particula.F), 100, 0.5));
+    }
+
+    //vetor campo magnetico
+    if(opcoes.ver_campo_magnetico)
+    {
+        cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+        cairo_set_line_width(cr, 1.5);
+        cairo_arc(cr, -0.45*darea_width/opcoes.escala, 0.45*darea_height/opcoes.escala, 20/opcoes.escala, 0, 2*M_PI);
+        cairo_stroke(cr);
+
+        if(campo_magnetico.sentido == -1)
+        {
+            cairo_arc(cr, -0.45*darea_width/opcoes.escala, 0.45*darea_height/opcoes.escala, 3/opcoes.escala, 0, 2*M_PI);
+            cairo_fill(cr);
+        }
+        else
+        {
+            cairo_move_to(cr, -0.45*darea_width/opcoes.escala, 0.45*darea_height/opcoes.escala);
+            cairo_rel_move_to(cr, -M_SQRT2*10/opcoes.escala, M_SQRT2*10/opcoes.escala);
+            cairo_rel_line_to(cr, M_SQRT2*20/opcoes.escala, -M_SQRT2*20/opcoes.escala);
+            cairo_move_to(cr, -0.45*darea_width/opcoes.escala, 0.45*darea_height/opcoes.escala);
+            cairo_rel_move_to(cr, M_SQRT2*10/opcoes.escala, M_SQRT2*10/opcoes.escala);
+            cairo_rel_line_to(cr, -M_SQRT2*20/opcoes.escala, -M_SQRT2*20/opcoes.escala);
+            cairo_stroke(cr);
+        }
+        
+    }
+
+    //vetor campo eletrico
+    if(opcoes.ver_campo_eletrico)
+    {
+        if(campo_eletrico.e_uniforme)
+        {
+            cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+            cairo_set_line_width(cr, 1.5);
+            arrow_to(cr, -0.4*darea_width/opcoes.escala, 0.45*darea_height/opcoes.escala, campo_eletrico.angulo, 30/opcoes.escala);
+            cairo_stroke(cr);
+        }
+        else
+        {
+            cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+            cairo_set_line_width(cr, 1.5);
+            arrow_to(cr, campo_eletrico.origem.x, campo_eletrico.origem.y, 
+                vetor_angulo_com_eixo_x(campo_eletrico.E), 
+                30/opcoes.escala);
+            cairo_stroke(cr);
+        }
     }
     
     //desenhar a particula
@@ -1221,7 +1281,7 @@ int main(int argc, char **argv)
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Força de Lorentz");
-    gtk_window_set_default_size(GTK_WINDOW(window), tamanho_tela.x*3/4,  tamanho_tela.y*3/4);
+    gtk_window_set_default_size(GTK_WINDOW(window), tamanho_tela.x*2/3,  tamanho_tela.y*2/3);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
     //criar janela opcoes
@@ -1279,6 +1339,7 @@ int main(int argc, char **argv)
     gtk_widget_set_margin_start(frame_drawing_area, 5);
     gtk_widget_set_margin_end(frame_drawing_area, 5);
     gtk_widget_set_margin_bottom(frame_drawing_area, 5);
+    ADICIONAR_CLASS(frame_drawing_area, "title1");
 
     //drawing area 
     darea = gtk_drawing_area_new();
@@ -1300,11 +1361,13 @@ int main(int argc, char **argv)
     gtk_widget_set_margin_start(frame_variaveis, 10);
     gtk_widget_set_margin_end(frame_variaveis, 10);
     gtk_box_pack_start(GTK_BOX(box_opcoes), frame_variaveis, FALSE, FALSE, 0);
+    ADICIONAR_CLASS(frame_variaveis, "title1");
 
     //box variaveis
     GtkWidget *box_variaveis;
     box_variaveis = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
     gtk_container_add(GTK_CONTAINER(frame_variaveis), box_variaveis);
+    ADICIONAR_CLASS(box_variaveis, "text1");
 
 //////////////////////// PARTICULA ////////////////////
 
