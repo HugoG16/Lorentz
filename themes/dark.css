@@ -16,6 +16,10 @@ border{
 }
  */
 
+ window{
+    background-color: floralwhite;
+ }
+
  label{
     color: #9d0208;
     font-size: 16px;

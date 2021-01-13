@@ -43,9 +43,9 @@ REFERENCIAS
 #define MAX_VEL 3000
 #define MAX_CARGA 100
 #define MAX_MASSA 100
-#define MIN_MASSA 0.1
+#define MIN_MASSA 0.5
 #define MAX_INTENSIDADE_CAMPO_MAGNETICO 5
-#define MAX_INTENSIDADE_CAMPO_ELETRICO 800
+#define MAX_INTENSIDADE_CAMPO_ELETRICO 500
 
 #define BARREIRA 10
 
@@ -59,7 +59,7 @@ REFERENCIAS
 #define K_E 10e3
 #define INF 10e9
 
-#define ADICIONAR_CLASS(VARIAVEL, CLASS) gtk_style_context_add_class( gtk_widget_get_style_context(VARIAVEL), CLASS)
+#define ADICIONAR_CLASS(VARIAVEL, CLASS) gtk_style_context_add_class( gtk_widget_get_style_context(VARIAVEL), CLASS )
 
 gdouble dt = 0;
 
@@ -248,8 +248,11 @@ void provider_create_from_file(gchar *file_name)
 gboolean fechar_programa()
 {
     printf("- A fechar -\n");
-    fclose(data);
-    printf("Ficheiro data.bin fechado com sucesso.\n");
+    if(data)
+    {
+        fclose(data);
+        printf("Ficheiro data.bin fechado com sucesso.\n");
+    }
     gtk_main_quit();
     printf("Gtk foi encerrado com sucesso.\n");
     return FALSE;
@@ -502,6 +505,8 @@ gboolean fc_button_parar_tempo(GtkWidget *button_parar_tempo, GtkWidget *button_
 
 gboolean fc_button_reiniciar(GtkWidget *w)
 {
+    fclose(data);
+    data = fopen("data.bin", "wb+");
     particula.r = particula.r0;
     particula.v = vetor_criar(cos(particula.angulo_velocidade_inicial), sin(particula.angulo_velocidade_inicial), 0);
     particula.v = vetor_escalar(particula.intensidade_velocidade_inicial, particula.v);
@@ -697,11 +702,13 @@ gboolean fc_ver_trajetoria(GtkWidget *w)
 
 gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
 {
-
-    if ( fseek(data, 0, SEEK_END) != 0 )
-        printf("    ERR - erro ao tentar ir para o fim do ficheiro\n");
-    if ( fwrite(&particula, sizeof(estrutura_particula), 1, data) != 1 )
-        printf("    ERR - erro ao tentar escrever no fim do ficheiro\n");
+    if(dt)
+    {
+        if ( fseek(data, 0, SEEK_END) != 0 )
+            printf("    ERR - erro ao tentar ir para o fim do ficheiro\n");
+        if ( fwrite(&particula, sizeof(estrutura_particula), 1, data) != 1 )
+            printf("    ERR - erro ao tentar escrever no fim do ficheiro\n");
+    }
 
     static gdouble darea_width = 0, darea_height = 0;
     darea_width = gtk_widget_get_allocated_width(darea);
@@ -965,6 +972,7 @@ gboolean on_draw_event_grafico_posicao(GtkWidget *darea, cairo_t *cr)
             cairo_stroke (cr);
         }
     }
+    return FALSE;
 }
 
 gboolean on_draw_event_grafico_velocidade(GtkWidget *darea, cairo_t *cr)
@@ -1047,6 +1055,7 @@ gboolean on_draw_event_grafico_velocidade(GtkWidget *darea, cairo_t *cr)
             cairo_stroke (cr);
         }
     }
+    return FALSE;
 }
 
 gboolean on_draw_event_grafico_acelaracao(GtkWidget *darea, cairo_t *cr)
@@ -1129,11 +1138,12 @@ gboolean on_draw_event_grafico_acelaracao(GtkWidget *darea, cairo_t *cr)
             cairo_stroke (cr);
         }
     }
+    return FALSE;
 }
 
 gboolean on_draw_event_grafico_energia(GtkWidget *darea, cairo_t *cr)
 {
-   if (gtk_widget_get_visible(darea))
+    if (gtk_widget_get_visible(darea))
     {
         static gdouble darea_width = 0, darea_height = 0, mult_width = 0, 
         mult_height_cinetica = 0, mult_height_potencial_eletrico = 0, mult_height_potencial_magnetico = 0;
@@ -1240,9 +1250,8 @@ gboolean on_draw_event_grafico_energia(GtkWidget *darea, cairo_t *cr)
             }
             cairo_stroke (cr);
         }
-
-        
     }
+    return FALSE;
 }
 
 gboolean time_handler (GtkWidget *widget)
@@ -1703,11 +1712,13 @@ int main(int argc, char **argv)
     gtk_widget_set_margin_end(frame_controlo_tempo, 10);
     gtk_widget_set_margin_bottom(frame_controlo_tempo, 10);
     gtk_box_pack_start(GTK_BOX(box_opcoes), frame_controlo_tempo, FALSE, FALSE, 0);
+    ADICIONAR_CLASS(frame_controlo_tempo, "title1");
 
     //box controlo tempo
     GtkWidget *box_controlo_tempo;
     box_controlo_tempo = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_container_add(GTK_CONTAINER(frame_controlo_tempo), box_controlo_tempo);
+    ADICIONAR_CLASS(box_controlo_tempo, "text1");
 
     //button parar tempo
     GtkWidget *button_parar_tempo, *button_continuar_tempo;
@@ -1743,11 +1754,13 @@ int main(int argc, char **argv)
     gtk_widget_set_margin_end(frame_escala, 10);
     gtk_widget_set_margin_bottom(frame_escala, 10);
     gtk_box_pack_start(GTK_BOX(box_opcoes), frame_escala, FALSE, FALSE, 0);
+    ADICIONAR_CLASS(frame_escala, "title1");
 
     //box escala
     GtkWidget *box_escala;
     box_escala = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_container_add(GTK_CONTAINER(frame_escala), box_escala);
+    ADICIONAR_CLASS(box_escala, "text1");
 
     //scale escala
     GtkWidget  *scale_escala;
