@@ -1,4 +1,4 @@
-# Força de Lorentz
+# Força Eletromagnética
 **Projeto final da cadeira de Programação - MEFT 20/21**
 
 Tendo em conta que a força electromagnética F que actua uma partícula de carga eléctrica q e velocidade v é dada pela expressão
