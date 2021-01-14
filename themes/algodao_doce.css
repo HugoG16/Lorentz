@@ -1,0 +1,40 @@
+window{
+    background-color: rgb(240, 253, 255);
+    background-image: none;
+}
+
+border{
+    border-color: rgb(175, 203, 207);
+}
+
+scale trough highlight {
+    background-color: #d56cff;
+    border-color: #d56cff;
+  }
+  
+  spinbutton {
+    border-color: #d56cff;
+  }
+
+dialog{
+    background-color: rgb(240, 253, 255);
+}
+
+label{
+    color: #b11347;
+    font-size: 16px;
+    font-weight: normal;
+}
+
+
+.title1 label{
+    color: #b11347;
+    font-weight: bolder;
+    font-size: 18px;
+}
+
+.text1 label{
+    color: #b11347;
+    font-size: 16px;
+    font-weight: normal;
+}

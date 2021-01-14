@@ -25,8 +25,6 @@ REFERENCIAS
     https://developer.gnome.org/gtk3/stable/chap-css-overview.html CSS
     https://developer.gnome.org/gtk3/stable/ GTK+
     https://label2.tecnico.ulisboa.pt/IC/ C E GTK+
-    https://coolors.co/d8f3dc-b7e4c7-95d5b2-74c69d-52b788-40916c-2d6a4f-1b4332-081c15
-    https://coolors.co/03071e-370617-6a040f-9d0208-d00000-dc2f02-e85d04-f48c06-faa307-ffba08
 *****************************************************************************************************************************************************/
 
 
@@ -178,7 +176,7 @@ typedef struct estrutura_campo_eletrico //se for uniforme nao existe origem; se 
     double angulo, intensidade; //intensidade "e a carga da particula geradora"    
 }estrutura_campo_eletrico;
 
-typedef enum enum_tema{claro, escuro} enum_tema;
+typedef enum enum_tema{algodao_doce, por_do_sol} enum_tema;
 
 typedef struct estrutura_opcoes
 {
@@ -243,6 +241,31 @@ void provider_create_from_file(gchar *file_name)
     gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER (provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
     gtk_css_provider_load_from_path (provider, file_name, NULL);    
     g_object_unref (provider);
+}
+
+void create_about(GtkWidget *w, gpointer win)
+{
+    GtkWidget *dialog ;
+    GdkPixbuf *image  ;
+    const gchar *authors[] = {"Hugo Gomes - 100314", "Madalena Nunes - 100337", NULL};
+    gchar *info = "Este programa simula a força eletromagnética,\ntambém conhecida como força de Lorentz.\nPode encontrar um ficheiro pdf com mais\ninformações no repositório do Github";
+    gchar *website = "https://github.com/HugoG16/Lorentz";
+
+    image = gdk_pixbuf_new_from_file ("assets/icon.png", NULL);
+
+    dialog = gtk_about_dialog_new ();
+    gtk_window_set_transient_for (GTK_WINDOW(dialog), GTK_WINDOW(win));
+    gtk_window_set_default_size (GTK_WINDOW(dialog), -1, -1);
+    gtk_about_dialog_set_program_name (GTK_ABOUT_DIALOG(dialog), "Força de Lorentz");
+    gtk_about_dialog_set_authors (GTK_ABOUT_DIALOG(dialog), authors);
+    gtk_about_dialog_set_comments (GTK_ABOUT_DIALOG(dialog), info);
+    gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), image);
+    gtk_about_dialog_set_website (GTK_ABOUT_DIALOG(dialog), website);
+    gtk_about_dialog_set_website_label (GTK_ABOUT_DIALOG(dialog), "Github repository");
+    g_object_unref (image);
+
+    gtk_dialog_run(GTK_DIALOG (dialog));
+    gtk_widget_destroy(dialog);
 }
 
 gboolean fechar_programa()
@@ -659,6 +682,20 @@ gboolean fc_check_button_grafico_energia_ver_potencial_magnetico(GtkWidget *w)
 gboolean fc_check_button_grafico_energia_ver_cinetica(GtkWidget *w)
 {
     opcoes.grafico_energia_ver_cinetica = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+    return FALSE;
+}
+
+gboolean fc_tema_algodao_doce(GtkWidget *w)
+{
+    opcoes.tema = algodao_doce;
+    provider_create_from_file ("themes/algodao_doce.css");
+    return FALSE;
+}
+
+gboolean fc_tema_por_do_sol(GtkWidget *w)
+{
+    opcoes.tema = por_do_sol;
+    provider_create_from_file ("themes/por_do_sol.css");
     return FALSE;
 }
 
@@ -1276,14 +1313,14 @@ int main(int argc, char **argv)
 
     gtk_init(&argc, &argv);
 
-    provider_create_from_file ("themes/dark.css");
+    provider_create_from_file ("themes/algodao_doce.css");
     vetor tamanho_tela = get_window_size();
 
     //iniciar
     particula = criar_particula(vetor_criar(100,50,0), 3*M_PI_2, 100, -10, 1);
     campo_magnetico = criar_campo_magnetico(1, 0);
     campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 50);
-    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, claro);
+    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, algodao_doce);
 
     gtk_window_set_default_icon_from_file("assets/icon.png", NULL);
 
@@ -2213,23 +2250,26 @@ int main(int argc, char **argv)
     
     GSList *tema = NULL;
 
-    //tema claro
-    GtkWidget *tema_claro;
-    tema_claro = gtk_radio_menu_item_new_with_label(tema, "Claro");
-    tema = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(tema_claro));
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_tema), tema_claro);
-    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tema_claro), TRUE);
+    //tema algodao_doce
+    GtkWidget *tema_algodao_doce;
+    tema_algodao_doce = gtk_radio_menu_item_new_with_label(tema, "Algodão doce");
+    tema = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(tema_algodao_doce));
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu_tema), tema_algodao_doce);
+    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tema_algodao_doce), TRUE);
+    g_signal_connect(G_OBJECT(tema_algodao_doce), "toggled", G_CALLBACK(fc_tema_algodao_doce), NULL);
 
-    //tema escuro
-    GtkWidget *tema_escuro;
-    tema_escuro = gtk_radio_menu_item_new_with_label(tema, "Escuro");
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_tema), tema_escuro);
+    //tema por_do_sol
+    GtkWidget *tema_por_do_sol;
+    tema_por_do_sol = gtk_radio_menu_item_new_with_label(tema, "Pôr do sol");
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu_tema), tema_por_do_sol);
+    g_signal_connect(G_OBJECT(tema_por_do_sol), "toggled", G_CALLBACK(fc_tema_por_do_sol), NULL);
 
 //////////////////////// SOBRE ////////////////////
 
     GtkWidget *item_sobre;
     item_sobre = gtk_menu_item_new_with_label("Sobre");
     gtk_menu_shell_append(GTK_MENU_SHELL(menubar), item_sobre);
+    g_signal_connect(G_OBJECT(item_sobre), "activate", G_CALLBACK(create_about), window);
 
 //////////////////////// FECHAR ////////////////////
 

@@ -1,0 +1,40 @@
+window{
+  background-color: #ffe1be;
+  background-image: radial-gradient(circle farthest-side at left bottom, #ffc4a9, #ffdaaf)
+}
+
+border{
+  border-color: #fcb36e;
+}
+
+scale trough highlight {
+  background-color: #ff6161;
+  border-color: #ff6161;
+}
+
+spinbutton {
+  border-color: #ff6161;
+}
+
+dialog{
+  background-color: #e5c38f;
+}
+
+label{
+  color: #000000;
+  font-size: 16px;
+  font-weight: normal;
+}
+
+
+.title1 label{
+  color: #8f0303;
+  font-weight: bolder;
+  font-size: 18px;
+}
+
+.text1 label{
+  color: #000000;
+  font-size: 16px;
+  font-weight: normal;
+}
