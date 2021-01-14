@@ -248,7 +248,7 @@ void create_about(GtkWidget *w, gpointer win)
     GtkWidget *dialog ;
     GdkPixbuf *image  ;
     const gchar *authors[] = {"Hugo Gomes - 100314", "Madalena Nunes - 100337", NULL};
-    gchar *info = "Este programa simula a força eletromagnética,\ntambém conhecida como força de Lorentz.\nPode encontrar um ficheiro pdf com mais\ninformações no repositório do Github";
+    gchar *info = "Este programa simula a força eletromagnética.\nPode encontrar um ficheiro pdf com mais\ninformações no repositório do Github";
     gchar *website = "https://github.com/HugoG16/Lorentz";
 
     image = gdk_pixbuf_new_from_file ("assets/icon.png", NULL);
@@ -256,7 +256,7 @@ void create_about(GtkWidget *w, gpointer win)
     dialog = gtk_about_dialog_new ();
     gtk_window_set_transient_for (GTK_WINDOW(dialog), GTK_WINDOW(win));
     gtk_window_set_default_size (GTK_WINDOW(dialog), -1, -1);
-    gtk_about_dialog_set_program_name (GTK_ABOUT_DIALOG(dialog), "Força de Lorentz");
+    gtk_about_dialog_set_program_name (GTK_ABOUT_DIALOG(dialog), "Força Eletromagnética");
     gtk_about_dialog_set_authors (GTK_ABOUT_DIALOG(dialog), authors);
     gtk_about_dialog_set_comments (GTK_ABOUT_DIALOG(dialog), info);
     gtk_about_dialog_set_logo (GTK_ABOUT_DIALOG(dialog), image);
@@ -865,7 +865,10 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     }
     
     //desenhar a particula
-    cairo_set_source_rgb(cr, 0., 0.5, 1.);
+    if (opcoes.tema == algodao_doce)
+        cairo_set_source_rgb(cr, 0., 0.5, 1.);
+    if (opcoes.tema == por_do_sol)
+        cairo_set_source_rgb(cr, 1., 0.1, 0.1);
     cairo_arc (cr, particula.r.x, particula.r.y, 10, 0., 2 * M_PI);
     cairo_fill (cr);
 
@@ -1326,36 +1329,36 @@ int main(int argc, char **argv)
 
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "Força de Lorentz");
+    gtk_window_set_title(GTK_WINDOW(window), "Força Eletromagnética");
     gtk_window_set_default_size(GTK_WINDOW(window), tamanho_tela.x*2/3,  tamanho_tela.y*2/3);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
     //criar janela opcoes
     window_opcoes = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window_opcoes), "Força de Lorentz - Opções");
+    gtk_window_set_title(GTK_WINDOW(window_opcoes), "Força Eletromagnética - Opções");
     gtk_window_set_position(GTK_WINDOW(window_opcoes), GTK_WIN_POS_CENTER);
 
     //criar janela grafico posicao
     window_grafico_posicao = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window_grafico_posicao), "Força de Lorentz - Gráfico Posicao");
+    gtk_window_set_title(GTK_WINDOW(window_grafico_posicao), "Força Eletromagnética - Gráfico Posicao");
     gtk_window_set_default_size(GTK_WINDOW(window_grafico_posicao), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_posicao), GTK_WIN_POS_CENTER);
 
     //criar janela grafico velocidade
     window_grafico_velocidade = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window_grafico_velocidade), "Força de Lorentz - Gráfico Velocidade");
+    gtk_window_set_title(GTK_WINDOW(window_grafico_velocidade), "Força Eletromagnética - Gráfico Velocidade");
     gtk_window_set_default_size(GTK_WINDOW(window_grafico_velocidade), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_velocidade), GTK_WIN_POS_CENTER);
 
     //criar janela grafico acelaracao
     window_grafico_acelaracao = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window_grafico_acelaracao), "Força de Lorentz - Gráfico Acelaracao");
+    gtk_window_set_title(GTK_WINDOW(window_grafico_acelaracao), "Força Eletromagnética - Gráfico Acelaracao");
     gtk_window_set_default_size(GTK_WINDOW(window_grafico_acelaracao), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_acelaracao), GTK_WIN_POS_CENTER);
 
     //criar janela grafico energia
     window_grafico_energia = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window_grafico_energia), "Força de Lorentz - Gráfico Energia");
+    gtk_window_set_title(GTK_WINDOW(window_grafico_energia), "Força Eletromagnética - Gráfico Energia");
     gtk_window_set_default_size(GTK_WINDOW(window_grafico_energia), tamanho_tela.x/2,  tamanho_tela.y/2);
     gtk_window_set_position(GTK_WINDOW(window_grafico_energia), GTK_WIN_POS_CENTER);
 
