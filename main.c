@@ -882,10 +882,10 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     
 
     //colisao elastica com a parede
-    if(particula.r.x < -darea_width/2 /opcoes.escala || particula.r.x > darea_width/2 /opcoes.escala)
+    if(particula.r.x < -darea_width/2 /* /opcoes.escala */ || particula.r.x > darea_width/2 /* /opcoes.escala */)
         particula.v.x *= -1;
     
-    if(particula.r.y < -darea_height/2 /opcoes.escala || particula.r.y > darea_height/2 /opcoes.escala)
+    if(particula.r.y < -darea_height/2 /* /opcoes.escala */ || particula.r.y > darea_height/2 /* /opcoes.escala */)
         particula.v.y *= -1;
 
     particula.v = vetor_somar(particula.v, vetor_escalar(dt, particula.a));
@@ -1270,7 +1270,7 @@ int main(int argc, char **argv)
     campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 50);
     opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, algodao_doce);
 
-    gtk_window_set_default_icon_from_file("assets/icon128.png", NULL);
+    gtk_window_set_default_icon_from_file("assets/icon.png", NULL);
 
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
