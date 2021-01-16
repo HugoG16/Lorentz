@@ -158,7 +158,7 @@ typedef struct estrutura_particula
     vetor r, r0, v, a, F;
     double carga, massa;
     double angulo_velocidade_inicial, intensidade_velocidade_inicial;
-    double energia_potencial_eletrico, energia_potencial_magnetico, energia_cinetica;
+    double energia_potencial_eletrico, energia_cinetica;
 }estrutura_particula;
 
 typedef struct estrutura_campo_magnetico
@@ -176,7 +176,7 @@ typedef struct estrutura_campo_eletrico //se for uniforme nao existe origem; se 
     double angulo, intensidade; //intensidade "e a carga da particula geradora"    
 }estrutura_campo_eletrico;
 
-typedef enum enum_tema{algodao_doce, por_do_sol} enum_tema;
+typedef enum enum_tema{algodao_doce, lusco_fusco, por_do_sol} enum_tema;
 
 typedef struct estrutura_opcoes
 {
@@ -198,7 +198,6 @@ typedef struct estrutura_opcoes
             grafico_acelaracao_ver_y,
             grafico_energia_ver_cinetica,
             grafico_energia_ver_potencial_eletrico,
-            grafico_energia_ver_potencial_magnetico,
             ver_referencial, 
             ver_forca,
             ver_velocidade,
@@ -330,7 +329,6 @@ estrutura_particula criar_particula(vetor r0, double angulo_velocidade_inicial, 
     particula.F = vetor_criar(0, 0, 0);
     particula.energia_cinetica = 0;
     particula.energia_potencial_eletrico = 0;
-    particula.energia_potencial_magnetico = 0;
     
     return particula;
 }
@@ -376,7 +374,6 @@ estrutura_opcoes criar_opcoes(double escala,
                             gboolean grafico_acelaracao_ver_y,
                             gboolean grafico_energia_ver_cinetica,
                             gboolean grafico_energia_ver_potencial_eletrico,
-                            gboolean grafico_energia_ver_potencial_magnetico,
                             gboolean ver_referencial, 
                             gboolean ver_forca,
                             gboolean ver_velocidade,
@@ -403,7 +400,6 @@ estrutura_opcoes criar_opcoes(double escala,
     opcoes.grafico_energia_escala_y = grafico_energia_escala_y;
     opcoes.grafico_energia_ver_cinetica = grafico_energia_ver_cinetica;
     opcoes.grafico_energia_ver_potencial_eletrico = grafico_energia_ver_potencial_eletrico;
-    opcoes.grafico_energia_ver_potencial_magnetico = grafico_energia_ver_potencial_magnetico;
     opcoes.ver_opcoes = ver_opcoes;
 
     opcoes.grafico_posicao_ver_x = grafico_posicao_ver_x;
@@ -673,12 +669,6 @@ gboolean fc_check_button_grafico_energia_ver_potencial_eletrico(GtkWidget *w)
     return FALSE;
 }
 
-gboolean fc_check_button_grafico_energia_ver_potencial_magnetico(GtkWidget *w)
-{
-    opcoes.grafico_energia_ver_potencial_magnetico = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
-    return FALSE;
-}
-
 gboolean fc_check_button_grafico_energia_ver_cinetica(GtkWidget *w)
 {
     opcoes.grafico_energia_ver_cinetica = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
@@ -689,6 +679,13 @@ gboolean fc_tema_algodao_doce(GtkWidget *w)
 {
     opcoes.tema = algodao_doce;
     provider_create_from_file ("themes/algodao_doce.css");
+    return FALSE;
+}
+
+gboolean fc_tema_lusco_fusco(GtkWidget *w)
+{
+    opcoes.tema = lusco_fusco;
+    provider_create_from_file ("themes/lusco_fusco.css");
     return FALSE;
 }
 
@@ -773,7 +770,7 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     //desenhar trajetoria
     if (opcoes.ver_trajetoria)
     {
-        cairo_set_source_rgba(cr, 1., 0., 0., 0.4);
+        cairo_set_source_rgba(cr, .2, 0.2, 0.2, 0.4);
         cairo_set_line_width (cr, 2.0);
         if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
         {   
@@ -867,8 +864,10 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
     //desenhar a particula
     if (opcoes.tema == algodao_doce)
         cairo_set_source_rgb(cr, 0., 0.5, 1.);
-    if (opcoes.tema == por_do_sol)
+    else if (opcoes.tema == por_do_sol)
         cairo_set_source_rgb(cr, 1., 0.1, 0.1);
+    else if (opcoes.tema == lusco_fusco)
+        cairo_set_source_rgb(cr, 0.2, 0., 0.8);
     cairo_arc (cr, particula.r.x, particula.r.y, 10, 0., 2 * M_PI);
     cairo_fill (cr);
 
@@ -925,9 +924,6 @@ gboolean on_draw_event(GtkWidget *darea, cairo_t *cr)
 
     //update energia potencial eletrico
     particula.energia_potencial_eletrico = particula.carga * vetor_norma(campo_eletrico.E) * vetor_distancia(particula.r, campo_eletrico.origem);
-
-    //update energia potencial magnetico
-    particula.energia_potencial_magnetico = 10000 * vetor_norma(campo_magnetico.B); 
 
     return FALSE;
 }
@@ -1186,13 +1182,12 @@ gboolean on_draw_event_grafico_energia(GtkWidget *darea, cairo_t *cr)
     if (gtk_widget_get_visible(darea))
     {
         static gdouble darea_width = 0, darea_height = 0, mult_width = 0, 
-        mult_height_cinetica = 0, mult_height_potencial_eletrico = 0, mult_height_potencial_magnetico = 0;
+        mult_height_cinetica = 0, mult_height_potencial_eletrico = 0;
         darea_width = gtk_widget_get_allocated_width(darea);
         darea_height = gtk_widget_get_allocated_height(darea);
         mult_width = darea_width / NUM_ELEMENTOS_TRAJETORIA;
         mult_height_cinetica = 0.0001;
         mult_height_potencial_eletrico = 0.00005;
-        mult_height_potencial_magnetico = 0.005;
 
         //transformar o plano tal que a origem esteja no centro da darea à direita e que os vetores ex e ey sejam os convencionados
         cairo_matrix_t matrix;
@@ -1263,33 +1258,6 @@ gboolean on_draw_event_grafico_energia(GtkWidget *darea, cairo_t *cr)
             }
             cairo_stroke (cr);
         }
-
-        //desenhar grafico energia potencial magnetico
-        if (opcoes.grafico_energia_ver_potencial_magnetico)
-        {
-            cairo_set_source_rgba(cr, 0., 0., 1., 1);
-            cairo_set_line_width (cr, 2.0);
-            if ( fseek(data, - (long) sizeof(estrutura_particula) * NUM_ELEMENTOS_TRAJETORIA , SEEK_END) == 0) 
-            {   
-                for (int i = 0; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
-                {
-                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
-                        cairo_line_to(cr, mult_width*i, mult_height_potencial_magnetico*trajetoria.energia_potencial_magnetico);
-                }
-            }
-            else
-            {
-                fseek(data, 0, SEEK_SET);
-                fread(&trajetoria, sizeof(estrutura_particula), 1, data);
-
-                for (int i = 1; i < NUM_ELEMENTOS_TRAJETORIA; ++i)
-                {
-                    if (fread(&trajetoria, sizeof(estrutura_particula), 1, data) == 1)
-                        cairo_line_to(cr, mult_width*i, mult_height_potencial_magnetico*trajetoria.energia_potencial_magnetico);
-                }
-            }
-            cairo_stroke (cr);
-        }
     }
     return FALSE;
 }
@@ -1323,9 +1291,9 @@ int main(int argc, char **argv)
     particula = criar_particula(vetor_criar(100,50,0), 3*M_PI_2, 100, -10, 1);
     campo_magnetico = criar_campo_magnetico(1, 0);
     campo_eletrico = criar_campo_eletrico(FALSE, vetor_criar(0, 0, 0), 0, 50);
-    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, algodao_doce);
+    opcoes = criar_opcoes(1, 1, 1, 1, 1, 1, 1, 1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, algodao_doce);
 
-    gtk_window_set_default_icon_from_file("assets/icon.png", NULL);
+    gtk_window_set_default_icon_from_file("assets/icon128.png", NULL);
 
     //criar janela
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -2222,21 +2190,14 @@ int main(int argc, char **argv)
 
         //check button grafico eneriga ver potencial eletrico
     GtkWidget *check_button_grafico_energia_ver_potencial_eletrico;
-    check_button_grafico_energia_ver_potencial_eletrico = gtk_check_button_new_with_label("Ver gráfico da energia potencial eletrica");
+    check_button_grafico_energia_ver_potencial_eletrico = gtk_check_button_new_with_label("Ver gráfico da energia potencial elétrica");
     gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), check_button_grafico_energia_ver_potencial_eletrico, FALSE, FALSE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_energia_ver_potencial_eletrico), opcoes.grafico_energia_ver_potencial_eletrico);
     g_signal_connect(G_OBJECT(check_button_grafico_energia_ver_potencial_eletrico), "toggled", G_CALLBACK(fc_check_button_grafico_energia_ver_potencial_eletrico), NULL);
 
-        //check button grafico eneriga ver potencial magnetico
-    GtkWidget *check_button_grafico_energia_ver_potencial_magnetico;
-    check_button_grafico_energia_ver_potencial_magnetico = gtk_check_button_new_with_label("Ver gráfico da energia potencial magnetica");
-    gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), check_button_grafico_energia_ver_potencial_magnetico, FALSE, FALSE, 0);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_energia_ver_potencial_magnetico), opcoes.grafico_energia_ver_potencial_magnetico);
-    g_signal_connect(G_OBJECT(check_button_grafico_energia_ver_potencial_magnetico), "toggled", G_CALLBACK(fc_check_button_grafico_energia_ver_potencial_magnetico), NULL);
-
         //check button grafico eneriga ver cinetica
     GtkWidget *check_button_grafico_energia_ver_cinetica;
-    check_button_grafico_energia_ver_cinetica = gtk_check_button_new_with_label("Ver gráfico da energia cinetica");
+    check_button_grafico_energia_ver_cinetica = gtk_check_button_new_with_label("Ver gráfico da energia cinética");
     gtk_box_pack_start(GTK_BOX(box_grafico_energia_opcoes), check_button_grafico_energia_ver_cinetica, FALSE, FALSE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check_button_grafico_energia_ver_cinetica), opcoes.grafico_energia_ver_cinetica);
     g_signal_connect(G_OBJECT(check_button_grafico_energia_ver_cinetica), "toggled", G_CALLBACK(fc_check_button_grafico_energia_ver_cinetica), NULL);
@@ -2255,11 +2216,17 @@ int main(int argc, char **argv)
 
     //tema algodao_doce
     GtkWidget *tema_algodao_doce;
-    tema_algodao_doce = gtk_radio_menu_item_new_with_label(tema, "Algodão doce");
+    tema_algodao_doce = gtk_radio_menu_item_new_with_label(tema, "Algodão-doce");
     tema = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(tema_algodao_doce));
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_tema), tema_algodao_doce);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tema_algodao_doce), TRUE);
     g_signal_connect(G_OBJECT(tema_algodao_doce), "toggled", G_CALLBACK(fc_tema_algodao_doce), NULL);
+
+    //tema por_do_sol
+    GtkWidget *tema_lusco_fusco;
+    tema_lusco_fusco = gtk_radio_menu_item_new_with_label(tema, "Lusco-fusco");
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu_tema), tema_lusco_fusco);
+    g_signal_connect(G_OBJECT(tema_lusco_fusco), "toggled", G_CALLBACK(fc_tema_lusco_fusco), NULL);
 
     //tema por_do_sol
     GtkWidget *tema_por_do_sol;
